@@ -241,16 +241,24 @@ void MuntPlugin::run(uint32_t sample_count)
         return;
     LV2_ATOM_SEQUENCE_FOREACH(m_ports.control, ev)
     {
-        if (ev->body.type == m_uris.midi_MidiEvent)
+        if (ev->body.type == m_uris.midi_MidiEvent && ev->body.size > 0)
         {
             const uint8_t *evdata = (uint8_t *)LV2_ATOM_BODY(&ev->body);
-            MT32Emu::Bit32u msg = 0;
-            for (unsigned i=0; i<ev->body.size; ++i)
-                msg |= evdata[i] << (i*8);
             uint64_t timeTarget = m_timestamp + ev->time.frames;
             uint64_t timeScaled = timeTarget * m_rateRatio;
-            m_synth->playMsg(msg, timeScaled);
-            printf("msg t=%08x st=%08x %08x\n", (unsigned)timeTarget, (unsigned)timeScaled, msg);
+            if (evdata[0] != LV2_MIDI_MSG_SYSTEM_EXCLUSIVE)
+            {
+                MT32Emu::Bit32u msg = 0;
+                for (unsigned i=0; i<ev->body.size; ++i)
+                    msg |= evdata[i] << (i*8);
+                m_synth->playMsg(msg, timeScaled);
+                printf("msg t=%08x st=%08x %08x\n", (unsigned)timeTarget, (unsigned)timeScaled, msg);
+            }
+            else
+            {
+                m_synth->playSysex(evdata, ev->body.size, timeScaled);
+                printf("sysex t=%08x st=%08x size=%08x\n", (unsigned)timeTarget, (unsigned)timeScaled, ev->body.size);
+            }
         }
     }
 
