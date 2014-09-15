@@ -10,8 +10,8 @@ As a LV2 plugin it can be used in plugin hosts such as Carla, or directly in som
 TODO:
 
 - There is currently no GUI
-- How to send SysEx events to a LV2 plugin? MT-32 uses this to load custom timbres. Do hosts support this?
-  It would be useful to be able to do this in the GUI.
+- How to send SysEx events to a LV2 plugin? In a real MT-32 this is used to load custom timbres. Do hosts support this?
+  If not we're currently stuck with the default patches. It would be useful to be able to do this in the GUI
 - Load/Save state extension (could use .syx dump)
 
 Install
@@ -55,4 +55,7 @@ some point.
 
 The default setting the MT-32 has parts on MIDI channel 2-9, as well as a rhythm
 part on MIDI channel 10. Sending events on MIDI channel 1 will have no effect.
+
+Another difference with other plugins is that this plugin accepts program changes per channel. 
+Some hosts may have bugs letting these through.
 
