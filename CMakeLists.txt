@@ -4,9 +4,10 @@ set(munt_VERSION_MAJOR 1)
 set(munt_VERSION_MINOR 4)
 set(munt_VERSION_PATCH 0)
 
-option(munt_WITH_MT32EMU_SMF2WAV "Build command line standard MIDI file conversion tool" TRUE)
-option(munt_WITH_MT32EMU_QT "Build Qt-based UI-enabled application" TRUE)
-option(munt_WITH_INTERNAL_PORTAUDIO "Use internal version of PortAudio" TRUE)
+option(munt_WITH_MT32EMU_SMF2WAV "Build command line standard MIDI file conversion tool" FALSE)
+option(munt_WITH_MT32EMU_QT "Build Qt-based UI-enabled application" FALSE)
+option(munt_WITH_INTERNAL_PORTAUDIO "Use internal version of PortAudio" FALSE)
+option(munt_WITH_MT32EMU_LV2 "Build LV2 plugin" TRUE)
 
 if(munt_WITH_MT32EMU_QT AND munt_WITH_INTERNAL_PORTAUDIO)
   add_subdirectory(portaudio)
@@ -26,6 +27,11 @@ endif()
 
 if(munt_WITH_MT32EMU_QT AND munt_WITH_INTERNAL_PORTAUDIO)
   add_dependencies(mt32emu-qt portaudio)
+endif()
+
+if(munt_WITH_MT32EMU_LV2)
+  add_subdirectory(mt32emu_lv2)
+  add_dependencies(mt32emu-lv2 mt32emu)
 endif()
 
 # build a CPack driven installer package

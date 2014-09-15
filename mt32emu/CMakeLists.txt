@@ -25,7 +25,7 @@ set(libmt32emu_HEADERS
 )
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER MATCHES "(^|/)clang\\+\\+$")
-  add_definitions(-Wall -Wextra -Wnon-virtual-dtor -Wshadow -ansi -pedantic)
+  add_definitions(-Wall -Wextra -Wnon-virtual-dtor -Wshadow -ansi -pedantic -fPIC -fvisibility=hidden)
 endif()
 
 if(MSVC)
@@ -56,18 +56,18 @@ add_library(mt32emu STATIC
   src/sha1/sha1.cpp
 )
 
-install(TARGETS mt32emu
-  ARCHIVE DESTINATION lib
-)
-install(DIRECTORY
-  "${CMAKE_CURRENT_BINARY_DIR}/include/mt32emu"
-  DESTINATION include
-)
+#install(TARGETS mt32emu
+#  ARCHIVE DESTINATION lib
+#)
+#install(DIRECTORY
+#  "${CMAKE_CURRENT_BINARY_DIR}/include/mt32emu"
+#  DESTINATION include
+#)
 
-install(FILES
-  AUTHORS.txt COPYING.txt COPYING.LESSER.txt NEWS.txt README.txt TODO.txt
-  DESTINATION share/doc/munt/libmt32emu
-)
+#install(FILES
+#  AUTHORS.txt COPYING.txt COPYING.LESSER.txt NEWS.txt README.txt TODO.txt
+#  DESTINATION share/doc/munt/libmt32emu
+#)
 
 # Locations are exported for the benefit of a higher-level CMakeLists.txt.
 # These lines are irrelevant if compiling stand-alone.
