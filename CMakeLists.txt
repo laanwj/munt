@@ -9,6 +9,12 @@ option(munt_WITH_MT32EMU_QT "Build Qt-based UI-enabled application" FALSE)
 option(munt_WITH_INTERNAL_PORTAUDIO "Use internal version of PortAudio" FALSE)
 option(munt_WITH_MT32EMU_LV2 "Build LV2 plugin" TRUE)
 
+# Set a default build type for single-configuration
+# CMake generators if no build type is set.
+IF(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
+   SET(CMAKE_BUILD_TYPE RelWithDebInfo)
+ENDIF(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
+
 if(munt_WITH_MT32EMU_QT AND munt_WITH_INTERNAL_PORTAUDIO)
   add_subdirectory(portaudio)
 endif()

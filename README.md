@@ -24,10 +24,22 @@ This will build and install the plugin:
 ```bash
 mkdir build
 cd build
-cmake ..  # -DCMAKE_INSTALL_PREFIX:PATH=/opt/music to install to an alternative prefix
+cmake ..
 make
 sudo make install
 ```
+
+# Cmake options
+
+These options can be passed on the `cmake` command line to configure the build
+
+    -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo|Release|Debug 
+
+    Build in Release with debug info (default)/Release/Debug mode
+
+    -DCMAKE_INSTALL_PREFIX:PATH=/opt/music
+    
+    To install to an alternative prefix
 
 Copying the ROMS
 -----------------
