@@ -6,14 +6,12 @@ It uses the Munt MT-32 emulator (which is included in the repository). Like the 
 and similar modules make use of Linear Arithmetic synthesis.
 
 As a LV2 plugin it can be used in plugin hosts such as [Carla](http://kxstudio.sourceforge.net/Applications:Carla),
-or directly in some sequencers such as [QTractor](http://qtractor.sourceforge.net/qtractor-index.html) (untested).
+or directly in some sequencers such as [QTractor](http://qtractor.sourceforge.net/qtractor-index.html).
 
 Known issues
 --------------
 
-- There is currently no GUI
-- How to send SysEx events to a LV2 plugin? In a real MT-32 this is used to load custom timbres. Do hosts support this?
-  If not we're currently stuck with the default patches. It would be useful to be able to do this in the GUI
+- There is currently no GUI. A GUI would be useful to load custom patches, as well as possibly edit instruments.
 - Load/Save state extension not implemented (could use .syx dump)
 
 Install
