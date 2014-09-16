@@ -6,7 +6,8 @@ It uses the Munt MT-32 emulator (which is included in the repository). Like the 
 and similar modules make use of Linear Arithmetic synthesis.
 
 As a LV2 plugin it can be used in plugin hosts such as [Carla](http://kxstudio.sourceforge.net/Applications:Carla),
-or directly in some sequencers such as [QTractor](http://qtractor.sourceforge.net/qtractor-index.html).
+or directly in some sequencers such as [QTractor](http://qtractor.sourceforge.net/qtractor-index.html). It has been
+tested in the aforementioned programs, but should work with others as well.
 
 Known issues
 --------------
@@ -27,7 +28,7 @@ make
 sudo make install
 ```
 
-# Cmake options
+### Cmake options
 
 These options can be passed on the `cmake` command line to configure the build
 
@@ -57,6 +58,7 @@ SysEx banks
 ------------
 Many preset patch banks in SysEx (.syx) format can be found for the MT-32, for
 example at [Quest Studios](http://www.queststudios.com/roland/banks.html).
+Just like the standalone Munt emulator, the LV2 plugin can accept these as inline SysEx events.
 
 Important
 ----------
