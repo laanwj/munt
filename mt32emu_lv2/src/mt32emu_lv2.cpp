@@ -103,20 +103,32 @@ protected:
     // Callback for debug messages, in vprintf() format
     void printDebug(const char *fmt, va_list list)
     {
-        m_features.log->vprintf(m_features.log->handle, m_uris.log_Note, fmt, list);
-        m_features.log->printf(m_features.log->handle, m_uris.log_Note, "\n");
+        //m_features.log->vprintf(m_features.log->handle, m_uris.log_Note, fmt, list);
+        //m_features.log->printf(m_features.log->handle, m_uris.log_Note, "\n");
+        vfprintf(stderr, fmt, list);
+        fputs("\n", stderr);
+        fflush(stderr);
     }
 
     // Callbacks for reporting various errors and information
     void onErrorControlROM()
     {
-        m_features.log->printf(m_features.log->handle, m_uris.log_Error, "Error loading control ROM\n");
+        //m_features.log->printf(m_features.log->handle, m_uris.log_Error, "Error loading control ROM\n");
+        fprintf(stderr, "Error loading control ROM\n");
+        fflush(stderr);
     }
     void onErrorPCMROM()
     {
-        m_features.log->printf(m_features.log->handle, m_uris.log_Error, "Error loading PCM ROM\n");
+        //m_features.log->printf(m_features.log->handle, m_uris.log_Error, "Error loading PCM ROM\n");
+        fprintf(stderr, "Error loading PCM ROM\n");
+        fflush(stderr);
     }
-    void showLCDMessage(const char *message) {}
+    void showLCDMessage(const char *message)
+    {
+        //m_features.log->printf(m_features.log->handle, m_uris.log_Note, "LCD message: %s\n", message);
+        fprintf(stderr, "LCD message: %s\n", message);
+        fflush(stderr);
+    }
     void onMIDIMessagePlayed() {}
     void onDeviceReset() {}
     void onDeviceReconfig() {}
@@ -124,7 +136,12 @@ protected:
     void onNewReverbTime(MT32Emu::Bit8u /* time */) {}
     void onNewReverbLevel(MT32Emu::Bit8u /* level */) {}
     void onPolyStateChanged(int /* partNum */) {}
-    void onProgramChanged(int /* partNum */, int /* bankNum */, const char * /* patchName */) {}
+    void onProgramChanged(int partNum, int bankNum, const char *patchName)
+    {
+        //m_features.log->printf(m_features.log->handle, m_uris.log_Note, "Program change: %i %i %s\n", partNum, bankNum, patchName);
+        printf("Program change: %i %i %s\n", partNum, bankNum, patchName);
+        fflush(stdout);
+    }
 
 private:
     const MuntPlugin::Features &m_features;
@@ -193,7 +210,8 @@ const MT32Emu::ROMImage *loadROMImage(const std::string &filename)
     MT32Emu::FileStream *file = new MT32Emu::FileStream();
     if (!file->open(filename.c_str()))
     {
-        printf("Unable to open ROM image %s\n", filename.c_str());
+        fprintf(stderr, "Unable to open ROM image %s\n", filename.c_str());
+        fflush(stderr);
         delete file;
         return NULL;
     }
@@ -216,21 +234,24 @@ void MuntPlugin::activate()
     m_pcmROMImage = loadROMImage(m_bundlePath + "/pcm.rom");
     if (!m_controlROMImage || !m_pcmROMImage)
     {
-        printf("Unable to open ROM images, not activating\n");
+        fprintf(stderr, "Unable to open ROM images, not activating\n");
+        fflush(stderr);
         delete m_synth; m_synth = 0;
         return;
     }
 
     if (!m_synth->open(*m_controlROMImage, *m_pcmROMImage, MT32Emu::DEFAULT_MAX_PARTIALS))
     {
-        printf("Unable to open synth, not activating\n");
+        fprintf(stderr, "Unable to open synth, not activating\n");
+        fflush(stderr);
         return;
     }
     m_timestamp = 0;
     if (m_rate != MT32Emu::SAMPLE_RATE)
     {
         m_converter = SampleRateConverter::createSampleRateConverter(m_synth, m_rate);
-        printf("Converting sample rate from %f to %f\n", (double)MT32Emu::SAMPLE_RATE, m_rate);
+        fprintf(stdout, "Converting sample rate from %f to %f\n", (double)MT32Emu::SAMPLE_RATE, m_rate);
+        fflush(stdout);
     }
     m_rateRatio = MT32Emu::SAMPLE_RATE / m_rate;
 }
@@ -252,12 +273,14 @@ void MuntPlugin::run(uint32_t sample_count)
                 for (unsigned i=0; i<ev->body.size; ++i)
                     msg |= evdata[i] << (i*8);
                 m_synth->playMsg(msg, timeScaled);
-                printf("msg t=%08x st=%08x %08x\n", (unsigned)timeTarget, (unsigned)timeScaled, msg);
+                // printf("msg t=%08x st=%08x %08x\n", (unsigned)timeTarget, (unsigned)timeScaled, msg);
+                // fflush(stdout);
             }
             else
             {
                 m_synth->playSysex(evdata, ev->body.size, timeScaled);
                 printf("sysex t=%08x st=%08x size=%08x\n", (unsigned)timeTarget, (unsigned)timeScaled, ev->body.size);
+                fflush(stdout);
             }
         }
     }
