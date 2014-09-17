@@ -7,18 +7,20 @@ class FLMuntUI {open
   Function {make_window()} {open
   } {
     Fl_Window w {open
-      xywh {1968 482 430 115} type Double
+      xywh {1969 510 430 115} type Double
       code0 {\#include <FL/x.H>}
       code1 {\#include "munt_ui_controller.h"} visible
     } {
       Fl_Button {} {
         label button
-        callback {printf("Pushed the button!\\n");}
+        callback {c->test1();}
         xywh {335 15 80 25}
       }
-      Fl_Box {} {
+      Fl_Box display {
         label Display
-        xywh {45 47 254 38}
+        xywh {45 47 242 24}
+        code0 {\#include "fl_lcd_display.h"}
+        class LCDDisplay
       }
       Fl_Box {} {
         label MT32EMU
@@ -26,6 +28,7 @@ class FLMuntUI {open
       }
       Fl_Button {} {
         label button
+        callback {c->test2();} selected
         xywh {335 45 80 25}
       }
     }
@@ -34,8 +37,7 @@ class FLMuntUI {open
   } {
     code {make_window();
 w->show();
-c = controller;} {selected
-    }
+c = controller;} {}
   }
   Function {~FLMuntUI()} {open
   } {

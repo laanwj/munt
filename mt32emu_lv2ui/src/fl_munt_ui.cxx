@@ -3,10 +3,17 @@
 #include "fl_munt_ui.h"
 
 void FLMuntUI::cb_button_i(Fl_Button*, void*) {
-  printf("Pushed the button!\n");
+  c->test1();
 }
 void FLMuntUI::cb_button(Fl_Button* o, void* v) {
   ((FLMuntUI*)(o->parent()->user_data()))->cb_button_i(o,v);
+}
+
+void FLMuntUI::cb_button1_i(Fl_Button*, void*) {
+  c->test2();
+}
+void FLMuntUI::cb_button1(Fl_Button* o, void* v) {
+  ((FLMuntUI*)(o->parent()->user_data()))->cb_button1_i(o,v);
 }
 
 Fl_Double_Window* FLMuntUI::make_window() {
@@ -15,11 +22,21 @@ Fl_Double_Window* FLMuntUI::make_window() {
     { Fl_Button* o = new Fl_Button(335, 15, 80, 25, "button");
       o->callback((Fl_Callback*)cb_button);
     } // Fl_Button* o
-    { new Fl_Box(45, 47, 254, 38, "Display");
-    } // Fl_Box* o
+    { display = new LCDDisplay(45, 47, 242, 24, "Display");
+      display->box(FL_NO_BOX);
+      display->color(FL_BACKGROUND_COLOR);
+      display->selection_color(FL_BACKGROUND_COLOR);
+      display->labeltype(FL_NORMAL_LABEL);
+      display->labelfont(0);
+      display->labelsize(14);
+      display->labelcolor(FL_FOREGROUND_COLOR);
+      display->align(Fl_Align(FL_ALIGN_CENTER));
+      display->when(FL_WHEN_RELEASE);
+    } // LCDDisplay* display
     { new Fl_Box(100, 14, 140, 21, "MT32EMU");
     } // Fl_Box* o
-    { new Fl_Button(335, 45, 80, 25, "button");
+    { Fl_Button* o = new Fl_Button(335, 45, 80, 25, "button");
+      o->callback((Fl_Callback*)cb_button1);
     } // Fl_Button* o
     w->end();
   } // Fl_Double_Window* w

@@ -22,6 +22,7 @@ set(EXT_LIBS ${EXT_LIBS} ${NTK_LIBRARIES} ${NTK_IMAGES_LIBRARIES})
 set(mt32emu_lv2ui_SOURCES
   src/mt32emu_lv2ui.cpp
   src/fl_munt_ui.cxx
+  src/fl_lcd_display.cpp
 )
 
 set(mt32emu_lv2ui_HEADERS

@@ -7,6 +7,7 @@
 #include <FL/x.H>
 #include "munt_ui_controller.h"
 #include <FL/Fl_Button.H>
+#include "fl_lcd_display.h"
 #include <FL/Fl_Box.H>
 
 class FLMuntUI {
@@ -16,6 +17,11 @@ public:
 private:
   void cb_button_i(Fl_Button*, void*);
   static void cb_button(Fl_Button*, void*);
+public:
+  LCDDisplay *display;
+private:
+  void cb_button1_i(Fl_Button*, void*);
+  static void cb_button1(Fl_Button*, void*);
 public:
   FLMuntUI(MuntUIController *controller);
   ~FLMuntUI();
