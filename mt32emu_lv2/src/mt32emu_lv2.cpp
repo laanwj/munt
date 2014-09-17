@@ -40,8 +40,9 @@ namespace PortIndex
     enum PortIndex
     {
         CONTROL = 0,
-        OUT_L   = 1,
-        OUT_R   = 2
+        NOTIFY  = 1,
+        OUT_L   = 2,
+        OUT_R   = 3
     };
 }
 
@@ -76,6 +77,7 @@ private:
     struct Ports
     {
         const LV2_Atom_Sequence* control;
+        LV2_Atom_Sequence* notify;
         float *out[2];
     } m_ports;
 
@@ -187,6 +189,9 @@ void MuntPlugin::connect_port(uint32_t port, void* data)
     {
     case PortIndex::CONTROL:
         m_ports.control = static_cast<const LV2_Atom_Sequence*>(data);
+        break;
+    case PortIndex::NOTIFY:
+        m_ports.notify = static_cast<LV2_Atom_Sequence*>(data);
         break;
     case PortIndex::OUT_L:
         m_ports.out[0] = static_cast<float*>(data);

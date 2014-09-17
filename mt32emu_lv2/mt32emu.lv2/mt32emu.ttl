@@ -5,6 +5,18 @@
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix urid: <http://lv2plug.in/ns/ext/urid#> .
 @prefix programs: <http://kxstudio.sf.net/ns/lv2ext/programs#> .
+@prefix ui:   <http://lv2plug.in/ns/extensions/ui#> .
+
+<http://github.com/munt/munt/gui>
+        a ui:X11UI ;
+        lv2:requiredFeature urid:map ;
+        lv2:optionalFeature ui:noUserResize ;
+        lv2:optionalFeature ui:resize ;
+        ui:portNotification [
+                ui:plugin <http://github.com/munt/munt> ;
+                lv2:symbol "notify" ;
+                ui:notifyType atom:Blank
+        ] .
 
 <http://github.com/munt/munt>
         a lv2:InstrumentPlugin, lv2:Plugin ;
@@ -14,6 +26,7 @@
         lv2:requiredFeature urid:map ;
         lv2:optionalFeature lv2:hardRTCapable ;
         lv2:extensionData programs:Interface ;
+        ui:ui <http://github.com/munt/munt/gui> ;
         lv2:port [
                 a lv2:InputPort ,
                         atom:AtomPort ;
@@ -24,15 +37,22 @@
                 lv2:symbol "control" ;
                 lv2:name "Control"
         ] , [
+                a lv2:OutputPort ,
+                        atom:AtomPort ;
+                atom:bufferType atom:Sequence ;
+                lv2:index 1 ;
+                lv2:symbol "notify" ;
+                lv2:name "Notify";
+        ] , [
                 a lv2:AudioPort ,
                         lv2:OutputPort ;
-                lv2:index 1 ;
+                lv2:index 2 ;
                 lv2:symbol "out_l" ;
                 lv2:name "Audio Out L"
         ] , [
                 a lv2:AudioPort ,
                         lv2:OutputPort ;
-                lv2:index 2 ;
+                lv2:index 3 ;
                 lv2:symbol "out_r" ;
                 lv2:name "Audio Out R"
         ] .

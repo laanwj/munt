@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 2.6)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/Modules/")
-set(LV2_INSTALL_DIR lib/lv2 CACHE PATH "Specifies where the LV2 libraries should be installed")
 
 project(mt32emu-lv2)
 set(mt32emu_lv2_VERSION_MAJOR 1)
@@ -21,12 +20,6 @@ set(mt32emu_lv2_SOURCES
 
 set(mt32emu_lv2_HEADERS
 )
-
-find_package (PkgConfig REQUIRED)
-
-pkg_check_modules(LV2 lv2>=.0.1.0) # sets LV2_LIBRARIES
-include(${LV2_INCLUDE_DIRS})
-set(EXT_LIBS ${EXT_LIBS} ${LV2_LIBRARIES})
 
 find_package(MT32EMU REQUIRED)
 set(EXT_LIBS ${EXT_LIBS} ${MT32EMU_LIBRARIES})

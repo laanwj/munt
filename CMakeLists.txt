@@ -8,12 +8,21 @@ option(munt_WITH_MT32EMU_SMF2WAV "Build command line standard MIDI file conversi
 option(munt_WITH_MT32EMU_QT "Build Qt-based UI-enabled application" FALSE)
 option(munt_WITH_INTERNAL_PORTAUDIO "Use internal version of PortAudio" FALSE)
 option(munt_WITH_MT32EMU_LV2 "Build LV2 plugin" TRUE)
+option(munt_WITH_MT32EMU_LV2UI "Build Qt-based LV2 plugin GUI" TRUE)
+
+set(LV2_INSTALL_DIR lib/lv2 CACHE PATH "Specifies where the LV2 libraries should be installed")
 
 # Set a default build type for single-configuration
 # CMake generators if no build type is set.
 IF(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
    SET(CMAKE_BUILD_TYPE RelWithDebInfo)
 ENDIF(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
+
+# Common between LV2 and LV2UI
+find_package (PkgConfig REQUIRED)
+pkg_check_modules(LV2 lv2>=.0.1.0) # sets LV2_LIBRARIES
+include(${LV2_INCLUDE_DIRS})
+set(EXT_LIBS ${EXT_LIBS} ${LV2_LIBRARIES})
 
 if(munt_WITH_MT32EMU_QT AND munt_WITH_INTERNAL_PORTAUDIO)
   add_subdirectory(portaudio)
@@ -38,6 +47,11 @@ endif()
 if(munt_WITH_MT32EMU_LV2)
   add_subdirectory(mt32emu_lv2)
   add_dependencies(mt32emu-lv2 mt32emu)
+endif()
+
+if(munt_WITH_MT32EMU_LV2UI)
+  add_subdirectory(mt32emu_lv2ui)
+  add_dependencies(mt32emu-lv2ui mt32emu)
 endif()
 
 # build a CPack driven installer package

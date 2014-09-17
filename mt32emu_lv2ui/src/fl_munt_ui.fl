@@ -1,0 +1,53 @@
+# data file for the Fltk User Interface Designer (fluid)
+version 1.0300 
+header_name {.h} 
+code_name {.cxx}
+class FLMuntUI {open
+} {
+  Function {make_window()} {open
+  } {
+    Fl_Window w {open
+      xywh {1968 482 430 115} type Double
+      code0 {\#include <FL/x.H>}
+      code1 {\#include "munt_ui_controller.h"} visible
+    } {
+      Fl_Button {} {
+        label button
+        callback {printf("Pushed the button!\\n");}
+        xywh {335 15 80 25}
+      }
+      Fl_Box {} {
+        label Display
+        xywh {45 47 254 38}
+      }
+      Fl_Box {} {
+        label MT32EMU
+        xywh {100 14 140 21}
+      }
+      Fl_Button {} {
+        label button
+        xywh {335 45 80 25}
+      }
+    }
+  }
+  Function {FLMuntUI(MuntUIController *controller)} {open
+  } {
+    code {make_window();
+w->show();
+c = controller;} {selected
+    }
+  }
+  Function {~FLMuntUI()} {open
+  } {
+    code {delete w;} {}
+  }
+  Function {FLMuntUI(MuntUIController *controller, void* parentWindow)} {open
+  } {
+    code {make_window();
+fl_open_display();
+fl_embed(w, (Window)parentWindow);
+c = controller;} {}
+  }
+  decl {MuntUIController *c;} {private local
+  }
+} 
