@@ -15,7 +15,7 @@
         ui:portNotification [
                 ui:plugin <http://github.com/munt/munt> ;
                 lv2:symbol "notify" ;
-                ui:notifyType atom:Blank
+                ui:notifyType atom:Object
         ] .
 
 <http://github.com/munt/munt>
@@ -29,7 +29,7 @@
         ui:ui <http://github.com/munt/munt/gui> ;
         lv2:port [
                 a lv2:InputPort ,
-                        atom:AtomPort ;
+                atom:AtomPort ;
                 atom:bufferType atom:Sequence ;
                 atom:supports midi:MidiEvent ;
                 lv2:designation lv2:control ;
@@ -38,20 +38,20 @@
                 lv2:name "Control"
         ] , [
                 a lv2:OutputPort ,
-                        atom:AtomPort ;
+                atom:AtomPort ;
                 atom:bufferType atom:Sequence ;
                 lv2:index 1 ;
                 lv2:symbol "notify" ;
                 lv2:name "Notify";
         ] , [
                 a lv2:AudioPort ,
-                        lv2:OutputPort ;
+                lv2:OutputPort ;
                 lv2:index 2 ;
                 lv2:symbol "out_l" ;
                 lv2:name "Audio Out L"
         ] , [
                 a lv2:AudioPort ,
-                        lv2:OutputPort ;
+                lv2:OutputPort ;
                 lv2:index 3 ;
                 lv2:symbol "out_r" ;
                 lv2:name "Audio Out R"
