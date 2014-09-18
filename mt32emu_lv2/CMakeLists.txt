@@ -25,6 +25,9 @@ find_package(MT32EMU REQUIRED)
 set(EXT_LIBS ${EXT_LIBS} ${MT32EMU_LIBRARIES})
 include_directories(${MT32EMU_INCLUDE_DIRS})
 
+include_directories(${LV2_INCLUDE_DIRS})
+set(EXT_LIBS ${EXT_LIBS} ${LV2_LIBRARIES})
+
 # Prefer using SOXR if it is available
 find_package(LibSoxr)
 if(LIBSOXR_FOUND)

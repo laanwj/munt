@@ -32,6 +32,9 @@ find_package(MT32EMU REQUIRED)
 set(EXT_LIBS ${EXT_LIBS} ${MT32EMU_LIBRARIES})
 include_directories(${MT32EMU_INCLUDE_DIRS})
 
+include_directories(${LV2_INCLUDE_DIRS})
+set(EXT_LIBS ${EXT_LIBS} ${LV2_LIBRARIES})
+
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER MATCHES "(^|/)clang\\+\\+$")
   add_definitions(-Wall -Wextra -Wnon-virtual-dtor -ansi -fPIC -fvisibility=hidden)
   set ( CMAKE_SHARED_LINKER_FLAGS "-Wl,--fatal-warnings -Wl,--no-undefined -lc ${CMAKE_SHARED_LINKER_FLAGS}")

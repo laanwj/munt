@@ -21,8 +21,6 @@ ENDIF(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
 # Common between LV2 and LV2UI
 find_package (PkgConfig REQUIRED)
 pkg_check_modules(LV2 lv2>=.0.1.0) # sets LV2_LIBRARIES
-include(${LV2_INCLUDE_DIRS})
-set(EXT_LIBS ${EXT_LIBS} ${LV2_LIBRARIES})
 
 if(munt_WITH_MT32EMU_QT AND munt_WITH_INTERNAL_PORTAUDIO)
   add_subdirectory(portaudio)
