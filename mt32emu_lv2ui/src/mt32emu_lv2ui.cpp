@@ -68,7 +68,21 @@ public:
     };
     struct URIs
     {
-        //LV2_URID midi_MidiEvent;
+        LV2_URID atom_Object;
+        LV2_URID atom_URID;
+        LV2_URID atom_eventTransfer;
+        LV2_URID munt_eventType;
+        // Event types
+        LV2_URID munt_evt_showLCDMessage;
+        LV2_URID munt_evt_onPolyStateChanged;
+        LV2_URID munt_evt_onProgramChanged;
+        // Event arguments
+        LV2_URID munt_arg_message;
+        LV2_URID munt_arg_partNum;
+        LV2_URID munt_arg_bankNum;
+        LV2_URID munt_arg_patchName;
+        LV2_URID munt_arg_numPolys;
+        LV2_URID munt_arg_numPolysNonReleasing;
     };
 private:
     Features m_features;
@@ -102,7 +116,21 @@ MuntPluginUI::MuntPluginUI(const char* bundle_path, LV2UI_Write_Function write_f
 
     if (m_features.map)
     {
-        //m_uris.midi_MidiEvent = m_features.map->map(m_features.map->handle, LV2_MIDI__MidiEvent);
+        LV2_URID_Map* map = m_features.map;
+        m_uris.atom_Object = map->map(map->handle, LV2_ATOM__Object);
+        m_uris.atom_URID = map->map(map->handle, LV2_ATOM__URID);
+        m_uris.atom_eventTransfer = map->map(map->handle, LV2_ATOM__eventTransfer);
+        m_uris.munt_eventType = map->map(map->handle, MUNT_URI"#eventType");
+
+        m_uris.munt_evt_showLCDMessage = map->map(map->handle, MUNT_URI"#evt_showLCDMessage");
+        m_uris.munt_evt_onPolyStateChanged = map->map(map->handle, MUNT_URI"#evt_onPolyStateChanged");
+        m_uris.munt_evt_onProgramChanged = map->map(map->handle, MUNT_URI"#evt_onProgramChanged");
+        m_uris.munt_arg_message = map->map(map->handle, MUNT_URI"#arg_message");
+        m_uris.munt_arg_partNum = map->map(map->handle, MUNT_URI"#arg_partNum");
+        m_uris.munt_arg_bankNum = map->map(map->handle, MUNT_URI"#arg_bankNum");
+        m_uris.munt_arg_patchName = map->map(map->handle, MUNT_URI"#arg_patchName");
+        m_uris.munt_arg_numPolys = map->map(map->handle, MUNT_URI"#arg_numPolys");
+        m_uris.munt_arg_numPolysNonReleasing = map->map(map->handle, MUNT_URI"#arg_numPolysNonReleasing");
     }
 
     m_bundlePath = bundle_path;
@@ -123,6 +151,33 @@ MuntPluginUI::MuntPluginUI(const char* bundle_path, LV2UI_Write_Function write_f
 
 void MuntPluginUI::port_event(uint32_t port_index, uint32_t buffer_size, uint32_t format, const void* buffer)
 {
+    Fl::lock();
+    if (format == m_uris.atom_eventTransfer) {
+        printf("port_event %u %u %u\n", port_index, buffer_size, format);
+
+        LV2_Atom* atom = (LV2_Atom*)buffer;
+        if (atom->type != m_uris.atom_Object) {
+            printf("mt32emu_lv2ui: atom->type != atom_Object\n");
+            return;
+        }
+        LV2_Atom_Object* obj = (LV2_Atom_Object*)atom;
+        const LV2_Atom_URID* eventType = NULL;
+        lv2_atom_object_get(obj, m_uris.munt_eventType, &eventType, 0);
+        if (eventType == NULL || eventType->atom.type != m_uris.atom_URID) {
+            printf("mt32emu_lv2ui: eventType missing or has invalid type\n");
+            return;
+        }
+        if (eventType->body == m_uris.munt_evt_showLCDMessage) {
+            const LV2_Atom_String* message = NULL;
+            lv2_atom_object_get(obj, m_uris.munt_arg_message, &message, 0);
+            fprintf(stderr, "mt32emu_lv2ui: LCD message: %s\n", (const char*)LV2_ATOM_BODY(message));
+            fflush(stderr);
+        } else if(eventType->body == m_uris.munt_evt_onPolyStateChanged) {
+        } else if(eventType->body == m_uris.munt_evt_onProgramChanged) {
+        }
+    }
+    Fl::unlock();
+    Fl::awake();
 }
 
 int MuntPluginUI::idle()

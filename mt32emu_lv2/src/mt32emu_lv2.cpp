@@ -24,6 +24,7 @@
 #include <unistd.h>
 
 #include "lv2/lv2plug.in/ns/ext/atom/atom.h"
+#include "lv2/lv2plug.in/ns/ext/atom/forge.h"
 #include "lv2/lv2plug.in/ns/ext/atom/util.h"
 #include "lv2/lv2plug.in/ns/ext/midi/midi.h"
 #include "lv2/lv2plug.in/ns/ext/urid/urid.h"
@@ -45,6 +46,8 @@ namespace PortIndex
         OUT_R   = 3
     };
 }
+
+class ReportHandler_LV2;
 
 class MuntPlugin
 {
@@ -70,6 +73,20 @@ public:
         LV2_URID log_Note;
         LV2_URID log_Trace;
         LV2_URID log_Warning;
+        LV2_URID atom_eventTransfer;
+        // Event type property
+        LV2_URID munt_eventType;
+        // Event types
+        LV2_URID munt_evt_showLCDMessage;
+        LV2_URID munt_evt_onPolyStateChanged;
+        LV2_URID munt_evt_onProgramChanged;
+        // Event arguments
+        LV2_URID munt_arg_message;
+        LV2_URID munt_arg_partNum;
+        LV2_URID munt_arg_bankNum;
+        LV2_URID munt_arg_patchName;
+        LV2_URID munt_arg_numPolys;
+        LV2_URID munt_arg_numPolysNonReleasing;
     };
 private:
     Features m_features;
@@ -84,7 +101,7 @@ private:
     std::string m_bundlePath;
     double m_rate;
 
-    MT32Emu::ReportHandler *m_reportHandler;
+    ReportHandler_LV2 *m_reportHandler;
     MT32Emu::Synth *m_synth;
     const MT32Emu::ROMImage *m_controlROMImage;
     const MT32Emu::ROMImage *m_pcmROMImage;
@@ -92,14 +109,21 @@ private:
     /// Ratio scaling from real samples to MT32 samples
     double m_rateRatio;
     SampleRateConverter *m_converter;
+    LV2_Atom_Forge m_forge;
+    LV2_Atom_Forge_Frame m_notify_frame;
 };
 
+/** Reporthandler that passes on events to UI through
+ * notification port.
+ */
 class ReportHandler_LV2: public MT32Emu::ReportHandler
 {
 public:
-    ReportHandler_LV2(const MuntPlugin::Features &features, const MuntPlugin::URIs &uris):
-        m_features(features), m_uris(uris) {}
+    ReportHandler_LV2(const MuntPlugin::Features &features, const MuntPlugin::URIs &uris, LV2_Atom_Forge &m_forge):
+        m_features(features), m_uris(uris), m_forge(m_forge), m_synth(0) {}
     ~ReportHandler_LV2() {}
+
+    void setSynth(MT32Emu::Synth *synth) { m_synth = synth; }
 
 protected:
     // Callback for debug messages, in vprintf() format
@@ -130,24 +154,69 @@ protected:
         //m_features.log->printf(m_features.log->handle, m_uris.log_Note, "LCD message: %s\n", message);
         fprintf(stderr, "LCD message: %s\n", message);
         fflush(stderr);
+        LV2_Atom_Forge_Frame frame;
+        lv2_atom_forge_frame_time(&m_forge, 0);
+        lv2_atom_forge_object(&m_forge, &frame, 0, m_uris.atom_eventTransfer);
+        lv2_atom_forge_key(&m_forge, m_uris.munt_eventType);
+        lv2_atom_forge_urid(&m_forge, m_uris.munt_evt_showLCDMessage);
+        lv2_atom_forge_key(&m_forge, m_uris.munt_arg_message);
+        lv2_atom_forge_string(&m_forge, message, strlen(message));
+        lv2_atom_forge_pop(&m_forge, &frame);
     }
     void onMIDIMessagePlayed() {}
     void onDeviceReset() {}
     void onDeviceReconfig() {}
-    void onNewReverbMode(MT32Emu::Bit8u /* mode */) {}
-    void onNewReverbTime(MT32Emu::Bit8u /* time */) {}
-    void onNewReverbLevel(MT32Emu::Bit8u /* level */) {}
-    void onPolyStateChanged(int /* partNum */) {}
+    void onNewReverbMode(MT32Emu::Bit8u /*mode*/) {}
+    void onNewReverbTime(MT32Emu::Bit8u /*time*/) {}
+    void onNewReverbLevel(MT32Emu::Bit8u /*level*/) {}
+    void onPolyStateChanged(int partNum)
+    {
+        const MT32Emu::Part *part = m_synth->getPart(partNum);
+        const MT32Emu::Poly *poly = part->getFirstActivePoly();
+        // Count number of polys, as well as non-releasing polys, and
+        // send statistics
+        int numPolys = 0;
+        int numPolysNonReleasing = 0;
+        while (poly != NULL) {
+            if (poly->getState() != MT32Emu::POLY_Releasing)
+                numPolysNonReleasing += 1;
+            numPolys += 1;
+            poly = poly->getNext();
+        }
+        LV2_Atom_Forge_Frame frame;
+        lv2_atom_forge_frame_time(&m_forge, 0);
+        lv2_atom_forge_object(&m_forge, &frame, 0, m_uris.atom_eventTransfer);
+        lv2_atom_forge_key(&m_forge, m_uris.munt_eventType);
+        lv2_atom_forge_urid(&m_forge, m_uris.munt_evt_onPolyStateChanged);
+        lv2_atom_forge_key(&m_forge, m_uris.munt_arg_partNum);
+        lv2_atom_forge_int(&m_forge, partNum);
+        lv2_atom_forge_key(&m_forge, m_uris.munt_arg_numPolys);
+        lv2_atom_forge_int(&m_forge, numPolys);
+        lv2_atom_forge_key(&m_forge, m_uris.munt_arg_numPolysNonReleasing);
+        lv2_atom_forge_int(&m_forge, numPolysNonReleasing);
+        lv2_atom_forge_pop(&m_forge, &frame);
+    }
     void onProgramChanged(int partNum, int bankNum, const char *patchName)
     {
-        //m_features.log->printf(m_features.log->handle, m_uris.log_Note, "Program change: %i %i %s\n", partNum, bankNum, patchName);
-        printf("Program change: %i %i %s\n", partNum, bankNum, patchName);
-        fflush(stdout);
+        LV2_Atom_Forge_Frame frame;
+        lv2_atom_forge_frame_time(&m_forge, 0);
+        lv2_atom_forge_object(&m_forge, &frame, 0, m_uris.atom_eventTransfer);
+        lv2_atom_forge_key(&m_forge, m_uris.munt_eventType);
+        lv2_atom_forge_urid(&m_forge, m_uris.munt_evt_onProgramChanged);
+        lv2_atom_forge_key(&m_forge, m_uris.munt_arg_partNum);
+        lv2_atom_forge_int(&m_forge, partNum);
+        lv2_atom_forge_key(&m_forge, m_uris.munt_arg_bankNum);
+        lv2_atom_forge_int(&m_forge, bankNum);
+        lv2_atom_forge_key(&m_forge, m_uris.munt_arg_patchName);
+        lv2_atom_forge_string(&m_forge, patchName, strlen(patchName));
+        lv2_atom_forge_pop(&m_forge, &frame);
     }
 
 private:
     const MuntPlugin::Features &m_features;
     const MuntPlugin::URIs &m_uris;
+    LV2_Atom_Forge &m_forge;
+    MT32Emu::Synth *m_synth;
 };
 
 MuntPlugin::MuntPlugin(const LV2_Descriptor* /*descriptor*/, double rate, const char* bundle_path,
@@ -169,12 +238,27 @@ MuntPlugin::MuntPlugin(const LV2_Descriptor* /*descriptor*/, double rate, const 
 
     if (m_features.map)
     {
-        m_uris.midi_MidiEvent = m_features.map->map(m_features.map->handle, LV2_MIDI__MidiEvent);
-        m_uris.log_Error = m_features.map->map(m_features.map->handle, LV2_LOG__Error);
-        m_uris.log_Note = m_features.map->map(m_features.map->handle, LV2_LOG__Note);
-        m_uris.log_Trace = m_features.map->map(m_features.map->handle, LV2_LOG__Trace);
-        m_uris.log_Warning = m_features.map->map(m_features.map->handle, LV2_LOG__Warning);
+        LV2_URID_Map* map = m_features.map;
+        m_uris.midi_MidiEvent = map->map(map->handle, LV2_MIDI__MidiEvent);
+        m_uris.log_Error = map->map(map->handle, LV2_LOG__Error);
+        m_uris.log_Note = map->map(map->handle, LV2_LOG__Note);
+        m_uris.log_Trace = map->map(map->handle, LV2_LOG__Trace);
+        m_uris.log_Warning = map->map(map->handle, LV2_LOG__Warning);
+        m_uris.atom_eventTransfer = map->map(map->handle, LV2_ATOM__eventTransfer);
+
+        m_uris.munt_eventType = map->map(map->handle, MUNT_URI"#eventType");
+        m_uris.munt_evt_showLCDMessage = map->map(map->handle, MUNT_URI"#evt_showLCDMessage");
+        m_uris.munt_evt_onPolyStateChanged = map->map(map->handle, MUNT_URI"#evt_onPolyStateChanged");
+        m_uris.munt_evt_onProgramChanged = map->map(map->handle, MUNT_URI"#evt_onProgramChanged");
+        m_uris.munt_arg_message = map->map(map->handle, MUNT_URI"#arg_message");
+        m_uris.munt_arg_partNum = map->map(map->handle, MUNT_URI"#arg_partNum");
+        m_uris.munt_arg_bankNum = map->map(map->handle, MUNT_URI"#arg_bankNum");
+        m_uris.munt_arg_patchName = map->map(map->handle, MUNT_URI"#arg_patchName");
+        m_uris.munt_arg_numPolys = map->map(map->handle, MUNT_URI"#arg_numPolys");
+        m_uris.munt_arg_numPolysNonReleasing = map->map(map->handle, MUNT_URI"#arg_numPolysNonReleasing");
     }
+    /// forge for UI events
+    lv2_atom_forge_init(&m_forge, m_features.map);
 
     m_bundlePath = bundle_path;
 }
@@ -224,6 +308,8 @@ const MT32Emu::ROMImage *loadROMImage(const std::string &filename)
     const MT32Emu::ROMImage *image = MT32Emu::ROMImage::makeROMImage(file);
     if (image->getROMInfo() == NULL)
     {
+        fprintf(stderr, "Could not identify ROM image %s\n", filename.c_str());
+        fflush(stderr);
         deleteROMImage(image);
         return NULL;
     }
@@ -232,8 +318,9 @@ const MT32Emu::ROMImage *loadROMImage(const std::string &filename)
 
 void MuntPlugin::activate()
 {
-    m_reportHandler = new ReportHandler_LV2(m_features, m_uris);
+    m_reportHandler = new ReportHandler_LV2(m_features, m_uris, m_forge);
     m_synth = new MT32Emu::Synth(m_reportHandler);
+    m_reportHandler->setSynth(m_synth);
 
     m_controlROMImage = loadROMImage(m_bundlePath + "/control.rom");
     m_pcmROMImage = loadROMImage(m_bundlePath + "/pcm.rom");
@@ -244,6 +331,8 @@ void MuntPlugin::activate()
         delete m_synth; m_synth = 0;
         return;
     }
+    printf("Control ROM: %s\n", m_controlROMImage->getROMInfo()->description);
+    printf("PCM ROM: %s\n", m_pcmROMImage->getROMInfo()->description);
 
     if (!m_synth->open(*m_controlROMImage, *m_pcmROMImage, MT32Emu::DEFAULT_MAX_PARTIALS))
     {
@@ -263,8 +352,13 @@ void MuntPlugin::activate()
 
 void MuntPlugin::run(uint32_t sample_count)
 {
-    if (!m_ports.control || !m_ports.out[0] || !m_ports.out[1] || !m_synth)
+    if (!m_ports.control || !m_ports.notify || !m_ports.out[0] || !m_ports.out[1] || !m_synth)
         return;
+
+    // Set up forge to write to notify port
+    lv2_atom_forge_set_buffer(&m_forge, (uint8_t*)m_ports.notify, m_ports.notify->atom.size);
+    lv2_atom_forge_sequence_head(&m_forge, &m_notify_frame, 0);
+
     LV2_ATOM_SEQUENCE_FOREACH(m_ports.control, ev)
     {
         if (ev->body.type == m_uris.midi_MidiEvent && ev->body.size > 0)
@@ -278,8 +372,6 @@ void MuntPlugin::run(uint32_t sample_count)
                 for (unsigned i=0; i<ev->body.size; ++i)
                     msg |= evdata[i] << (i*8);
                 m_synth->playMsg(msg, timeScaled);
-                // printf("msg t=%08x st=%08x %08x\n", (unsigned)timeTarget, (unsigned)timeScaled, msg);
-                // fflush(stdout);
             }
             else
             {
