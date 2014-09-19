@@ -36,16 +36,13 @@
 
 #define MUNT_URI "http://github.com/munt/munt"
 
-namespace PortIndex
+enum PortIndex: uint32_t
 {
-    enum PortIndex
-    {
-        CONTROL = 0,
-        NOTIFY  = 1,
-        OUT_L   = 2,
-        OUT_R   = 3
-    };
-}
+    CONTROL = 0,
+    NOTIFY  = 1,
+    OUT_L   = 2,
+    OUT_R   = 3
+};
 
 class ReportHandler_LV2;
 

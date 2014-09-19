@@ -43,16 +43,13 @@
 #define MUNT_URI_UI "http://github.com/munt/munt/gui"
 #define MUNT_URI_EXTERNAL_UI "http://github.com/munt/munt/ui#external"
 
-namespace PortIndex
+enum PortIndex: uint32_t
 {
-    enum PortIndex
-    {
-        CONTROL = 0,
-        NOTIFY  = 1,
-        OUT_L   = 2,
-        OUT_R   = 3
-    };
-}
+    CONTROL = 0,
+    NOTIFY  = 1,
+    OUT_L   = 2,
+    OUT_R   = 3
+};
 
 class LV2PluginUI
 {
