@@ -257,7 +257,7 @@ MuntPlugin::MuntPlugin(const LV2_Descriptor* /*descriptor*/, double rate, const 
         m_uris.munt_arg_numPolys = map->map(map->handle, MUNT_URI"#arg_numPolys");
         m_uris.munt_arg_numPolysNonReleasing = map->map(map->handle, MUNT_URI"#arg_numPolysNonReleasing");
     }
-    /// forge for UI events
+    /// forge for DSP->UI events
     lv2_atom_forge_init(&m_forge, m_features.map);
 
     m_bundlePath = bundle_path;
@@ -379,6 +379,11 @@ void MuntPlugin::run(uint32_t sample_count)
                 printf("sysex t=%08x st=%08x size=%08x\n", (unsigned)timeTarget, (unsigned)timeScaled, ev->body.size);
                 fflush(stdout);
             }
+        }
+        else
+        {
+            printf("mt32emu_lv2: Unknown event type %i\n", ev->body.type);
+            fflush(stdout);
         }
     }
 

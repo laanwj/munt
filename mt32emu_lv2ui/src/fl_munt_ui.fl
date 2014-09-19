@@ -7,18 +7,18 @@ class FLMuntUI {open
   Function {make_window()} {open
   } {
     Fl_Window w {open
-      xywh {1969 510 430 115} type Double
+      xywh {1955 525 430 85} type Double
       code0 {\#include <FL/x.H>}
       code1 {\#include "munt_ui_controller.h"} visible
     } {
       Fl_Button {} {
-        label button
+        label Debug
         callback {c->test1();}
         xywh {335 15 80 25}
       }
       Fl_Box display {
-        label Display
-        xywh {45 47 242 24}
+        label Display selected
+        xywh {45 47 246 24}
         code0 {\#include "fl_lcd_display.h"}
         class LCDDisplay
       }
@@ -27,8 +27,8 @@ class FLMuntUI {open
         xywh {100 14 140 21}
       }
       Fl_Button {} {
-        label button
-        callback {c->test2();} selected
+        label {Load syx}
+        callback {c->test2();}
         xywh {335 45 80 25}
       }
     }

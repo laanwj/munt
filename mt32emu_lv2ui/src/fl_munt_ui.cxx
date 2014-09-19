@@ -2,27 +2,27 @@
 
 #include "fl_munt_ui.h"
 
-void FLMuntUI::cb_button_i(Fl_Button*, void*) {
+void FLMuntUI::cb_Debug_i(Fl_Button*, void*) {
   c->test1();
 }
-void FLMuntUI::cb_button(Fl_Button* o, void* v) {
-  ((FLMuntUI*)(o->parent()->user_data()))->cb_button_i(o,v);
+void FLMuntUI::cb_Debug(Fl_Button* o, void* v) {
+  ((FLMuntUI*)(o->parent()->user_data()))->cb_Debug_i(o,v);
 }
 
-void FLMuntUI::cb_button1_i(Fl_Button*, void*) {
+void FLMuntUI::cb_Load_i(Fl_Button*, void*) {
   c->test2();
 }
-void FLMuntUI::cb_button1(Fl_Button* o, void* v) {
-  ((FLMuntUI*)(o->parent()->user_data()))->cb_button1_i(o,v);
+void FLMuntUI::cb_Load(Fl_Button* o, void* v) {
+  ((FLMuntUI*)(o->parent()->user_data()))->cb_Load_i(o,v);
 }
 
 Fl_Double_Window* FLMuntUI::make_window() {
-  { w = new Fl_Double_Window(430, 115);
+  { w = new Fl_Double_Window(430, 85);
     w->user_data((void*)(this));
-    { Fl_Button* o = new Fl_Button(335, 15, 80, 25, "button");
-      o->callback((Fl_Callback*)cb_button);
+    { Fl_Button* o = new Fl_Button(335, 15, 80, 25, "Debug");
+      o->callback((Fl_Callback*)cb_Debug);
     } // Fl_Button* o
-    { display = new LCDDisplay(45, 47, 242, 24, "Display");
+    { display = new LCDDisplay(45, 47, 246, 24, "Display");
       display->box(FL_NO_BOX);
       display->color(FL_BACKGROUND_COLOR);
       display->selection_color(FL_BACKGROUND_COLOR);
@@ -35,8 +35,8 @@ Fl_Double_Window* FLMuntUI::make_window() {
     } // LCDDisplay* display
     { new Fl_Box(100, 14, 140, 21, "MT32EMU");
     } // Fl_Box* o
-    { Fl_Button* o = new Fl_Button(335, 45, 80, 25, "button");
-      o->callback((Fl_Callback*)cb_button1);
+    { Fl_Button* o = new Fl_Button(335, 45, 80, 25, "Load syx");
+      o->callback((Fl_Callback*)cb_Load);
     } // Fl_Button* o
     w->end();
   } // Fl_Double_Window* w

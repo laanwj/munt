@@ -12,8 +12,8 @@ tested in the aforementioned programs, but should work with others as well.
 Known issues
 --------------
 
-- There is currently no GUI. A GUI would be useful to load custom patches, as well as possibly edit instruments.
 - Load/Save state extension not implemented (could use .syx dump)
+- GUI is very basic (I could use help with design)
 
 Install
 ---------

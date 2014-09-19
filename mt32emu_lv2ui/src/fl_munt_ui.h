@@ -15,13 +15,13 @@ public:
   Fl_Double_Window* make_window();
   Fl_Double_Window *w;
 private:
-  void cb_button_i(Fl_Button*, void*);
-  static void cb_button(Fl_Button*, void*);
+  void cb_Debug_i(Fl_Button*, void*);
+  static void cb_Debug(Fl_Button*, void*);
 public:
   LCDDisplay *display;
 private:
-  void cb_button1_i(Fl_Button*, void*);
-  static void cb_button1(Fl_Button*, void*);
+  void cb_Load_i(Fl_Button*, void*);
+  static void cb_Load(Fl_Button*, void*);
 public:
   FLMuntUI(MuntUIController *controller);
   ~FLMuntUI();
