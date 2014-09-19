@@ -15,12 +15,14 @@ LCDDisplay::~LCDDisplay()
     cairo_surface_destroy(surface);
 }
 
+inline void fade(uint8_t &d, uint8_t nv)
+{
+    d = (d + nv) >> 1;
+}
+
 void LCDDisplay::refreshDisplay()
 {
     unsigned char *data = cairo_image_surface_get_data(surface);
-    /// Fade out old contents
-    for (unsigned w=0; w<WIDTH*HEIGHT; ++w)
-        data[w] = data[w]/2;
     int stride = cairo_image_surface_get_stride(surface);
     int xat, xstart, yat;
     xstart = 0;
@@ -37,12 +39,16 @@ void LCDDisplay::refreshDisplay()
             xat = xstart;
             unsigned char fval = Font_6x8[c][t];
             for (int m = 4; m >= 0; --m) {
-                if (((fval >> m) & 1) != 0)
-                {
-                    data[yat*stride + xat] = 255;
-                    data[yat*stride + xat + 1] = 210;
-                    data[yat*stride + xat + stride] = 180;
-                    data[yat*stride + xat + stride + 1] = 150;
+                if (((fval >> m) & 1) != 0) {
+                    fade(data[yat*stride + xat], 255);
+                    fade(data[yat*stride + xat + 1], 210);
+                    fade(data[yat*stride + xat + stride], 180);
+                    fade(data[yat*stride + xat + stride + 1], 150);
+                } else {
+                    fade(data[yat*stride + xat], 20);
+                    fade(data[yat*stride + xat + 1], 20);
+                    fade(data[yat*stride + xat + stride], 20);
+                    fade(data[yat*stride + xat + stride + 1], 20);
                 }
                 xat += 2;
             }
@@ -64,9 +70,9 @@ void LCDDisplay::draw()
         int _x = x(), _y = y(), _w = w(), _h = h();
 
         cairo_rectangle(cr, _x, _y, _w, _h);
-        cairo_set_source_rgb(cr, 98/255.0, 127/255.0, 0/255.0);
+        //cairo_set_source_rgb(cr, 98/255.0, 127/255.0, 0/255.0);
+        cairo_set_source_rgb(cr, 12/255.0, 66/255.0, 4/255.0);
         cairo_fill(cr);
-        //cairo_rectangle(cr, _x, _y, _w, _h);
         cairo_set_source_rgb(cr, 232/255.0, 254/255.0, 0/255.0);
         cairo_mask_surface(cr, surface, _x + _w/2 - WIDTH/2, _y + _h/2 - HEIGHT/2);
         cairo_restore(cr);
@@ -80,7 +86,7 @@ void LCDDisplay::refresh_timeout(void *self_)
     if (self->settle_counter)
     {
         self->settle_counter--;
-        Fl::add_timeout(0.05, refresh_timeout, self_);
+        Fl::repeat_timeout(0.05, refresh_timeout, self_);
     }
 }
 

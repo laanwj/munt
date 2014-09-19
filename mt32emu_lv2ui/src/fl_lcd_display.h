@@ -19,7 +19,7 @@ public:
 private:
     static const unsigned int CHAR_WIDTH = 12;
     static const unsigned int CHAR_HEIGHT = 18;
-    static const unsigned int WIDTH = 12 * NUMCHARS;
+    static const unsigned int WIDTH = 12 * NUMCHARS - 2;
     static const unsigned int HEIGHT = 18;
     uint8_t display[NUMCHARS];
     cairo_surface_t *surface;
