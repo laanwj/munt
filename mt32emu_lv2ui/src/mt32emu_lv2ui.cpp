@@ -40,20 +40,7 @@
 #include "fl_munt_ui.h"
 #include <FL/Fl_File_Chooser.H>
 #include "munt_ui_controller.h"
-
-#define UNUSED(x) (void)(x)
-
-#define MUNT_URI "http://github.com/munt/munt"
-#define MUNT_URI_UI "http://github.com/munt/munt/gui"
-#define MUNT_URI_EXTERNAL_UI "http://github.com/munt/munt/ui#external"
-
-enum PortIndex: uint32_t
-{
-    CONTROL = 0,
-    NOTIFY  = 1,
-    OUT_L   = 2,
-    OUT_R   = 3
-};
+#include "mt32emu_lv2_common.h"
 
 /** Convert an LV2_Atom_String to a std::string */
 inline std::string atomToString(const LV2_Atom_String* message)
@@ -200,15 +187,15 @@ MuntPluginUI::MuntPluginUI(const char* bundle_path, LV2UI_Write_Function write_f
         m_uris.atom_eventTransfer = map->map(map->handle, LV2_ATOM__eventTransfer);
         m_uris.munt_eventType = map->map(map->handle, MUNT_URI"#eventType");
 
-        m_uris.munt_evt_showLCDMessage = map->map(map->handle, MUNT_URI"#evt_showLCDMessage");
-        m_uris.munt_evt_onPolyStateChanged = map->map(map->handle, MUNT_URI"#evt_onPolyStateChanged");
-        m_uris.munt_evt_onProgramChanged = map->map(map->handle, MUNT_URI"#evt_onProgramChanged");
-        m_uris.munt_arg_message = map->map(map->handle, MUNT_URI"#arg_message");
-        m_uris.munt_arg_partNum = map->map(map->handle, MUNT_URI"#arg_partNum");
-        m_uris.munt_arg_bankNum = map->map(map->handle, MUNT_URI"#arg_bankNum");
-        m_uris.munt_arg_patchName = map->map(map->handle, MUNT_URI"#arg_patchName");
-        m_uris.munt_arg_numPolys = map->map(map->handle, MUNT_URI"#arg_numPolys");
-        m_uris.munt_arg_numPolysNonReleasing = map->map(map->handle, MUNT_URI"#arg_numPolysNonReleasing");
+        m_uris.munt_evt_showLCDMessage = map->map(map->handle, MUNT_URI__evt_showLCDMessage);
+        m_uris.munt_evt_onPolyStateChanged = map->map(map->handle, MUNT_URI__evt_onPolyStateChanged);
+        m_uris.munt_evt_onProgramChanged = map->map(map->handle, MUNT_URI__evt_onProgramChanged);
+        m_uris.munt_arg_message = map->map(map->handle, MUNT_URI__arg_message);
+        m_uris.munt_arg_partNum = map->map(map->handle, MUNT_URI__arg_partNum);
+        m_uris.munt_arg_bankNum = map->map(map->handle, MUNT_URI__arg_bankNum);
+        m_uris.munt_arg_patchName = map->map(map->handle, MUNT_URI__arg_patchName);
+        m_uris.munt_arg_numPolys = map->map(map->handle, MUNT_URI__arg_numPolys);
+        m_uris.munt_arg_numPolysNonReleasing = map->map(map->handle, MUNT_URI__arg_numPolysNonReleasing);
     }
 
     m_bundlePath = bundle_path;

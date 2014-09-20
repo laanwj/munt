@@ -34,30 +34,9 @@
 
 #include <mt32emu/mt32emu.h>
 #include "resample/SampleRateConverter.h"
+#include "mt32emu_lv2_common.h"
 
-#define UNUSED(x) (void)(x)
-
-/** This should be common data between UI and DSP */
-#define MUNT_URI "http://github.com/munt/munt"
-/* Sub-URIs for state */
-#define MUNT_URI__PatchTempMemoryRegion    MUNT_URI "#PatchTempMemoryRegion"
-#define MUNT_URI__RhythmTempMemoryRegion   MUNT_URI "#RhythmTempMemoryRegion"
-#define MUNT_URI__TimbreTempMemoryRegion   MUNT_URI "#TimbreTempMemoryRegion"
-#define MUNT_URI__PatchesMemoryRegion      MUNT_URI "#PatchesMemoryRegion"
-#define MUNT_URI__TimbresMemoryRegion      MUNT_URI "#TimbresMemoryRegion"
-#define MUNT_URI__SystemMemoryRegion       MUNT_URI "#SystemMemoryRegion"
-
-/* TODO also define for parameters/events */
-
-enum PortIndex: uint32_t
-{
-    CONTROL = 0,
-    NOTIFY  = 1,
-    OUT_L   = 2,
-    OUT_R   = 3
-};
-
-/* List of memory regions to save/restore */
+/*** List of memory regions to save/restore */
 struct MT32StateRegion
 {
     const char *uri;
@@ -279,16 +258,16 @@ MuntPlugin::MuntPlugin(const LV2_Descriptor* /*descriptor*/, double rate, const 
         m_uris.atom_eventTransfer = map->map(map->handle, LV2_ATOM__eventTransfer);
         m_uris.atom_Chunk = map->map(map->handle, LV2_ATOM__Chunk);
 
-        m_uris.munt_eventType = map->map(map->handle, MUNT_URI"#eventType");
-        m_uris.munt_evt_showLCDMessage = map->map(map->handle, MUNT_URI"#evt_showLCDMessage");
-        m_uris.munt_evt_onPolyStateChanged = map->map(map->handle, MUNT_URI"#evt_onPolyStateChanged");
-        m_uris.munt_evt_onProgramChanged = map->map(map->handle, MUNT_URI"#evt_onProgramChanged");
-        m_uris.munt_arg_message = map->map(map->handle, MUNT_URI"#arg_message");
-        m_uris.munt_arg_partNum = map->map(map->handle, MUNT_URI"#arg_partNum");
-        m_uris.munt_arg_bankNum = map->map(map->handle, MUNT_URI"#arg_bankNum");
-        m_uris.munt_arg_patchName = map->map(map->handle, MUNT_URI"#arg_patchName");
-        m_uris.munt_arg_numPolys = map->map(map->handle, MUNT_URI"#arg_numPolys");
-        m_uris.munt_arg_numPolysNonReleasing = map->map(map->handle, MUNT_URI"#arg_numPolysNonReleasing");
+        m_uris.munt_eventType = map->map(map->handle, MUNT_URI__eventType);
+        m_uris.munt_evt_showLCDMessage = map->map(map->handle, MUNT_URI__evt_showLCDMessage);
+        m_uris.munt_evt_onPolyStateChanged = map->map(map->handle, MUNT_URI__evt_onPolyStateChanged);
+        m_uris.munt_evt_onProgramChanged = map->map(map->handle, MUNT_URI__evt_onProgramChanged);
+        m_uris.munt_arg_message = map->map(map->handle, MUNT_URI__arg_message);
+        m_uris.munt_arg_partNum = map->map(map->handle, MUNT_URI__arg_partNum);
+        m_uris.munt_arg_bankNum = map->map(map->handle, MUNT_URI__arg_bankNum);
+        m_uris.munt_arg_patchName = map->map(map->handle, MUNT_URI__arg_patchName);
+        m_uris.munt_arg_numPolys = map->map(map->handle, MUNT_URI__arg_numPolys);
+        m_uris.munt_arg_numPolysNonReleasing = map->map(map->handle, MUNT_URI__arg_numPolysNonReleasing);
     }
     /// forge for DSP->UI events
     lv2_atom_forge_init(&m_forge, m_features.map);
