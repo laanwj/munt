@@ -4,7 +4,6 @@
 @prefix midi: <http://lv2plug.in/ns/ext/midi#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix urid: <http://lv2plug.in/ns/ext/urid#> .
-@prefix programs: <http://kxstudio.sf.net/ns/lv2ext/programs#> .
 @prefix ui:   <http://lv2plug.in/ns/extensions/ui#> .
 
 <http://github.com/munt/munt/gui>
@@ -25,7 +24,6 @@
         lv2:project <http://lv2plug.in/ns/lv2> ;
         lv2:requiredFeature urid:map ;
         lv2:optionalFeature lv2:hardRTCapable ;
-        lv2:extensionData programs:Interface ;
         ui:ui <http://github.com/munt/munt/gui> ;
         lv2:port [
                 a lv2:InputPort ,
