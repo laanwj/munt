@@ -942,6 +942,13 @@ void Synth::readMemory(Bit32u addr, Bit32u len, Bit8u *data) {
 	}
 }
 
+void Synth::writeMemory(Bit32u addr, Bit32u len, const Bit8u *data) {
+	const MemoryRegion *region = findMemoryRegion(addr);
+	if (region != NULL) {
+		writeMemoryRegion(region, addr, len, data);
+	}
+}
+
 void Synth::initMemoryRegions() {
 	// Timbre max tables are slightly more complicated than the others, which are used directly from the ROM.
 	// The ROM (sensibly) just has maximums for TimbreParam.commonParam followed by just one TimbreParam.partialParam,

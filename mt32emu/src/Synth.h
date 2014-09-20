@@ -534,6 +534,7 @@ public:
 	unsigned int getPartialCount() const;
 
 	void readMemory(Bit32u addr, Bit32u len, Bit8u *data);
+	void writeMemory(Bit32u addr, Bit32u len, const Bit8u *data);
 
 	// partNum should be 0..7 for Part 1..8, or 8 for Rhythm
 	const Part *getPart(unsigned int partNum) const;
