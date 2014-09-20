@@ -9,11 +9,20 @@ As a LV2 plugin it can be used in plugin hosts such as [Carla](http://kxstudio.s
 or directly in some sequencers such as [QTractor](http://qtractor.sourceforge.net/qtractor-index.html). It has been
 tested in the aforementioned programs, but should work with others as well.
 
+It has a basic GUI that shows the current part status (similar to mt32emu_qt) and can be used to load syx files.
+
+![Status](mt32emu_lv2ui/screenshots/parts.png)
+
+![Loading syx file](mt32emu_lv2ui/screenshots/loadsyx.png)
+
+![SysEx LCD message](mt32emu_lv2ui/screenshots/message.png)
+
 Known issues
 --------------
 
 - Load/Save state extension not implemented (could use .syx dump)
 - GUI is very basic (I could use help with design)
+- Aimed at Linux. The underlying Munt library is portable, and as NTK is used for the UI, portability to Windows or MacOSX should be possible, but was never tested.
 
 Install
 ---------
@@ -32,13 +41,17 @@ sudo make install
 
 These options can be passed on the `cmake` command line to configure the build
 
-    -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo|Release|Debug 
+```
+-DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo|Release|Debug 
 
-    Build in Release with debug info (default)/Release/Debug mode
+Build in Release with debug info (default)/Release/Debug mode
+```
 
-    -DCMAKE_INSTALL_PREFIX:PATH=/opt/music
-    
-    To install to an alternative prefix
+```
+-DCMAKE_INSTALL_PREFIX:PATH=/opt/music
+
+To install to an alternative prefix
+```
 
 Copying the ROMS
 -----------------
@@ -54,11 +67,21 @@ cp MT32_CONTROL.ROM $PREFIX/lib/lv2/mt32emu.lv2/control.rom
 cp MT32_PCM.ROM $PREFIX/lib/lv2/mt32emu.lv2/pcm.rom
 ```
 
+If everything goes alright, the plugin will log the following while loading:
+
+    Control ROM: MT-32 Control v1.07
+    PCM ROM: MT-32 PCM ROM
+
+Otherwise it will print, along with some more verbose information
+
+    Unable to open ROM images, not activating
+
 SysEx banks
 ------------
 Many preset patch banks in SysEx (.syx) format can be found for the MT-32, for
 example at [Quest Studios](http://www.queststudios.com/roland/banks.html).
-Just like the standalone Munt emulator, the LV2 plugin can accept these as inline SysEx events.
+Just like the standalone Munt emulator, the LV2 plugin can accept these as inline SysEx events or
+when loaded through the GUI.
 
 Important
 ----------
@@ -71,7 +94,8 @@ The default setting the MT-32 has parts on MIDI channel 2-9, as well as a rhythm
 part on MIDI channel 10. **Sending events on MIDI channel 1 will thus have no effect**.
 
 Another difference with other plugins is that this plugin accepts program changes per channel. 
-Some hosts may have bugs in letting these through.
+Some hosts, for example Carla, may have to be configued to let those through instead of mapping them
+(uncheck "Map Program Changes", check "Send Bank/Program Changes").
 
 TODOs
 ------
