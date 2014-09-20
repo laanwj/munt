@@ -9,7 +9,7 @@
 class LCDDisplay: public Fl_Widget
 {
 public:
-    static const unsigned int NUMCHARS = 20;
+    static const size_t NUMCHARS = 20;
 
     LCDDisplay(int _x, int _y, int _w, int _h, const char *_label=0 );
     ~LCDDisplay();

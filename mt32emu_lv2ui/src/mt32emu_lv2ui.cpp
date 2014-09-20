@@ -21,7 +21,9 @@
 #include <cstring>
 #include <signal.h>
 #include <string>
+#include <sstream>
 #include <unistd.h>
+#include <vector>
 
 #include "lv2/lv2plug.in/ns/ext/atom/atom.h"
 #include "lv2/lv2plug.in/ns/ext/atom/forge.h"
@@ -36,7 +38,7 @@
 #include <mt32emu/mt32emu.h>
 
 #include "fl_munt_ui.h"
-#include <FL/Fl_File_Chooser.H> 
+#include <FL/Fl_File_Chooser.H>
 #include "munt_ui_controller.h"
 
 #define MUNT_URI "http://github.com/munt/munt"
@@ -50,6 +52,12 @@ enum PortIndex: uint32_t
     OUT_L   = 2,
     OUT_R   = 3
 };
+
+/** Convert an LV2_Atom_String to a std::string */
+inline std::string atomToString(const LV2_Atom_String* message)
+{
+    return std::string((const char*)LV2_ATOM_BODY(message), message->atom.size);
+}
 
 class LV2PluginUI
 {
@@ -101,7 +109,7 @@ public:
 
     /* Signals from NTK ui */
     void test1();
-    void test2();
+    void loadSyx(const char *filename);
 
 private:
     Features m_features;
@@ -114,14 +122,55 @@ private:
 
     FLMuntUI *m_ui;
 
+    /** Display handling */
     int m_polyState[NUM_PARTS];
+    /** Display state: this is in reverse order of priority,
+     * lower states override higher ones.
+     */
+    enum DisplayState: uint8_t {
+        PROGRESS = 0,
+        MESSAGE,
+        PROGRAM_CHANGE,
+        PARTS,
+        NumStates
+    };
+    /** Bitfield of active states */
+    uint32_t m_displayStates;
+    double m_displayProgress;
+    struct DisplayStateData
+    {
+        DisplayState id;
+        MuntPluginUI *parent;
+        std::string displayMessage;
+    } m_displayStatesData[DisplayState::NumStates];
 
+    /** Initialize display data */
+    void initDisplay();
+    /** Main display drawing/update function */
     void updateDisplay();
+    /** Display a message on the display for a certain time */
+    void displayMessage(DisplayState newState, const std::string &newMessage, double timeout);
+    /** Display timeout function: revert to PARTS state */
+    static void displayTimeout(void *self);
+
+    /** Syx loading.
+     * We need to distribute loading over a longer time to avoid filling up the hosts queue
+     * and dropping events...
+     */
+    std::vector<uint8_t> m_syxData;
+    size_t m_syxOffset;
+    size_t m_syxStart;
+    /** Send queued syx events to DSP.
+     * Return true when finished, false if more events have to be processed.
+     */
+    bool syxProcessEvents(size_t numBytes);
+    /** Syx timeout function, send some events */
+    static void syxTimeout(void *self);
 };
 
 MuntPluginUI::MuntPluginUI(const char* bundle_path, LV2UI_Write_Function write_function,
                LV2UI_Controller controller, LV2UI_Widget* widget, const LV2_Feature* const* features):
-    m_ui(0)
+    m_ui(0), m_displayStates(1<<DisplayState::PARTS)
 {
     LV2UI_Widget parentWindow = 0;
     LV2UI_Resize *resize = 0;
@@ -178,10 +227,13 @@ MuntPluginUI::MuntPluginUI(const char* bundle_path, LV2UI_Write_Function write_f
     /// forge for UI->DSP events
     lv2_atom_forge_init(&m_forge, m_features.map);
 
-    for (unsigned i=0; i<NUM_PARTS; ++i)
+    for (unsigned int i=0; i<NUM_PARTS; ++i)
         m_polyState[i] = 0;
-    updateDisplay();
+    initDisplay();
 }
+
+static const unsigned int NUM_BANKS = 4;
+static const char* BANK_NAMES[] = {"Synth-1", "Synth-2", "Memory ", "Rhythm "};
 
 void MuntPluginUI::port_event(uint32_t port_index, uint32_t buffer_size, uint32_t format, const void* buffer)
 {
@@ -209,8 +261,7 @@ void MuntPluginUI::port_event(uint32_t port_index, uint32_t buffer_size, uint32_
                 fflush(stderr);
                 return;
             }
-            fprintf(stdout, "mt32emu_lv2ui: LCD message: %s\n", (const char*)LV2_ATOM_BODY(message));
-            fflush(stdout);
+            displayMessage(DisplayState::MESSAGE, atomToString(message), 3.0);
         } else if(eventType->body == m_uris.munt_evt_onPolyStateChanged) {
             const LV2_Atom_Int* partNum = NULL;
             const LV2_Atom_Int* numPolys = NULL;
@@ -240,13 +291,19 @@ void MuntPluginUI::port_event(uint32_t port_index, uint32_t buffer_size, uint32_
                                      m_uris.munt_arg_patchName, &patchName,
                                      0);
             if (!partNum || !bankNum || !patchName ||
-                 partNum->atom.type != m_uris.atom_Int || bankNum->atom.type != m_uris.atom_Int || patchName->atom.type != m_uris.atom_String)
+                 partNum->atom.type != m_uris.atom_Int || bankNum->atom.type != m_uris.atom_Int || patchName->atom.type != m_uris.atom_String ||
+                 partNum->body < 0 || partNum->body >= int(NUM_PARTS) ||
+                 bankNum->body < 0 || bankNum->body >= int(NUM_BANKS))
             {
                 fprintf(stderr, "mt32emu_lv2ui: invalid onProgramChanged message\n");
                 fflush(stderr);
                 return;
             }
-            fprintf(stdout, "mt32emu_lv2ui: program change %i %i %s\n", partNum->body, bankNum->body, (const char*)LV2_ATOM_BODY(patchName));
+            // fprintf(stdout, "mt32emu_lv2ui: program change %i %i %s\n", partNum->body, bankNum->body, (const char*)LV2_ATOM_BODY(patchName));
+
+            std::stringstream s;
+            s << partNum->body + 1 << "|" << BANK_NAMES[bankNum->body] << "|" << atomToString(patchName);
+            displayMessage(DisplayState::PROGRAM_CHANGE, s.str(), 1.0);
         } else {
             fprintf(stderr, "mt32emu_lv2ui: unknown UI notification eventType=%i\n", eventType->body);
         }
@@ -272,7 +329,7 @@ void MuntPluginUI::sendMidi(void *data_in, size_t size_in)
 {
     if(sizeof(LV2_Atom) + size_in >= 1024)
     {
-        printf("mt32emu_lv2ui: Sending MIDI event too large (%i)\n", (int)size_in);
+        fprintf(stdout, "mt32emu_lv2ui: Sending MIDI event too large (%i)\n", (int)size_in);
         return;
     }
     uint8_t obj_buf[1024];
@@ -281,19 +338,14 @@ void MuntPluginUI::sendMidi(void *data_in, size_t size_in)
     hdr->type = m_uris.midi_MidiEvent;
     hdr->size = size_in;
     memcpy(data, data_in, size_in);
-    //data[0] = 0x91;
-    //data[1] = 60;
-    //data[2] = 127;
     size_t padded_size = lv2_atom_pad_size(lv2_atom_total_size(hdr));
     m_writeFunction(m_controller, PortIndex::CONTROL, padded_size, m_uris.atom_eventTransfer, hdr);
-    usleep(padded_size*100);
 }
 
 const size_t SYX_BUFFER_SIZE = 64*1024;
-void MuntPluginUI::test2()
+void MuntPluginUI::loadSyx(const char *filename)
 {
-    char *filename = fl_file_chooser("Select .syx file to load", "*.syx", NULL, 1);
-    if (!filename)
+    if (!m_syxData.empty()) // Still loading a previous syx
         return;
     FILE *f = fopen(filename, "rb");
     if (!f)
@@ -305,34 +357,113 @@ void MuntPluginUI::test2()
     size_t nread = fread(buffer, 1, SYX_BUFFER_SIZE, f);
     fclose(f);
     printf("Read %i bytes from syx file\n", (int)nread);
-    // 0xf0..0xf7
-    // Read events
-    size_t offset = 0;
-    size_t start = 0;
-    while (offset < nread) {
-        if (buffer[offset] == 0xf0)
-            start = offset;
-        if (buffer[offset] == 0xf7 && start != 0)
-        {
-            printf("  Event start=%u size=%u\n", (unsigned)start, (unsigned)(offset-start+1));
-            sendMidi(&buffer[start], offset-start+1);
-        }
-        ++offset;
-    }
+    m_syxData = std::vector<uint8_t>(buffer, buffer+nread);
+    m_syxOffset = 0;
+    m_syxStart = 0;
 
+    m_displayProgress = 0.0;
+    displayMessage(DisplayState::PROGRESS, std::string("Loading ") + fl_filename_name(filename) + "...", 0.0);
+    Fl::add_timeout(0.05, syxTimeout, this);
+}
+
+bool MuntPluginUI::syxProcessEvents(size_t numBytes)
+{
+    // Read and process SysEx events
+    size_t end = std::min(m_syxOffset + numBytes, m_syxData.size());
+    // printf("Processevents... %u %u\n", (unsigned)m_syxOffset, (unsigned)end);
+    while (m_syxOffset < end) {
+        if (m_syxData[m_syxOffset] == 0xf0)
+            m_syxStart = m_syxOffset;
+        if (m_syxData[m_syxOffset] == 0xf7 && m_syxStart != 0)
+        {
+            m_displayProgress = (double)m_syxOffset / m_syxData.size();
+            updateDisplay();
+            // printf("  Event m_syxStart=%u size=%u\n", (unsigned)m_syxStart, (unsigned)(m_syxOffset-m_syxStart+1));
+            sendMidi(&m_syxData[m_syxStart], m_syxOffset-m_syxStart+1);
+        }
+        ++m_syxOffset;
+    }
+    if (m_syxOffset == m_syxData.size())
+    {
+        m_displayStates &= ~(1 << DisplayState::PROGRESS);
+        updateDisplay();
+        m_syxData.clear();
+        return true;
+    } else {
+        return false;
+    }
+}
+
+void MuntPluginUI::syxTimeout(void *self_)
+{
+    MuntPluginUI *self = static_cast<MuntPluginUI*>(self_);
+    if (!self->syxProcessEvents(1000))
+        Fl::repeat_timeout(0.05, syxTimeout, self);
+}
+
+void MuntPluginUI::initDisplay()
+{
+    for (unsigned int i=0; i<DisplayState::NumStates; ++i)
+    {
+        m_displayStatesData[i].id = DisplayState(i);
+        m_displayStatesData[i].parent = this;
+    }
+    updateDisplay();
+}
+
+void MuntPluginUI::displayMessage(DisplayState newState, const std::string &newMessage, double timeout)
+{
+    DisplayStateData &stateData = m_displayStatesData[newState];
+    stateData.displayMessage = newMessage;
+    if (m_displayStates & (1 << newState))
+        Fl::remove_timeout(displayTimeout, &m_displayStatesData[newState]);
+    m_displayStates |= (1 << newState);
+    updateDisplay();
+    if (timeout != 0.0)
+        Fl::add_timeout(timeout, displayTimeout, &m_displayStatesData[newState]);
 }
 
 void MuntPluginUI::updateDisplay()
 {
     uint8_t display[LCDDisplay::NUMCHARS] = {0};
-    for (unsigned int i=0; i<9; ++i)
+    int n;
+    int curStateId = ffs(m_displayStates) - 1;
+    if (curStateId < 0 || curStateId >= int(DisplayState::NumStates))
+        return;
+    const DisplayStateData &curStateData = m_displayStatesData[curStateId];
+    const std::string &displayMessage = curStateData.displayMessage;
+    switch(curStateId)
     {
-        if (m_polyState[i])
-            display[i*2] = 128;
-        else
-            display[i*2] = i==8 ? 'R' : ('1' + i);
+    case DisplayState::PARTS:
+        for (unsigned int i=0; i<9; ++i)
+        {
+            if (m_polyState[i])
+                display[i*2] = 128;
+            else
+                display[i*2] = i==8 ? 'R' : ('1' + i);
+        }
+        break;
+    case DisplayState::PROGRESS:
+        n = int(LCDDisplay::NUMCHARS+1) * m_displayProgress;
+        if (n < 0) n = 0;
+        if (n > int(LCDDisplay::NUMCHARS)) n = int(LCDDisplay::NUMCHARS);
+        strncpy((char*)display, displayMessage.c_str(), LCDDisplay::NUMCHARS);
+        for (int u=0; u<n; ++u)
+            display[u] = 128;
+        break;
+    case DisplayState::MESSAGE:
+    case DisplayState::PROGRAM_CHANGE:
+        memcpy((char*)display, displayMessage.data(), std::min(LCDDisplay::NUMCHARS, displayMessage.size()));
+        break;
     }
     m_ui->display->setData(0, LCDDisplay::NUMCHARS, display);
+}
+
+void MuntPluginUI::displayTimeout(void *self_)
+{
+    MuntPluginUI::DisplayStateData *self = static_cast<MuntPluginUI::DisplayStateData*>(self_);
+    self->parent->m_displayStates &= ~(1 << self->id);
+    self->parent->updateDisplay();
 }
 
 int MuntPluginUI::idle()

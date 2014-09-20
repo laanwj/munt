@@ -6,6 +6,7 @@
 #include <FL/Fl_Double_Window.H>
 #include <FL/x.H>
 #include "munt_ui_controller.h"
+#include <FL/Fl_File_Chooser.H>
 #include <FL/Fl_Button.H>
 #include "fl_lcd_display.h"
 #include <FL/Fl_Box.H>
@@ -28,5 +29,9 @@ public:
   FLMuntUI(MuntUIController *controller, void* parentWindow);
 private:
   MuntUIController *c; 
+  Fl_File_Chooser *fc; 
+public:
+  static void fc_callback(Fl_File_Chooser *fc, void *self);
+  void load_syx(const char *filename);
 };
 #endif

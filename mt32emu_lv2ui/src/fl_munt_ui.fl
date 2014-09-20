@@ -7,9 +7,10 @@ class FLMuntUI {open
   Function {make_window()} {open
   } {
     Fl_Window w {open
-      xywh {1955 525 430 85} type Double
+      xywh {388 354 430 85} type Double
       code0 {\#include <FL/x.H>}
-      code1 {\#include "munt_ui_controller.h"} visible
+      code1 {\#include "munt_ui_controller.h"}
+      code2 {\#include <FL/Fl_File_Chooser.H>} visible
     } {
       Fl_Button {} {
         label Debug
@@ -17,8 +18,8 @@ class FLMuntUI {open
         xywh {335 15 80 25}
       }
       Fl_Box display {
-        label Display selected
-        xywh {45 47 246 24}
+        label Display
+        xywh {45 46 244 24}
         code0 {\#include "fl_lcd_display.h"}
         class LCDDisplay
       }
@@ -28,10 +29,12 @@ class FLMuntUI {open
       }
       Fl_Button {} {
         label {Load syx}
-        callback {c->test2();}
+        callback {fc->show();}
         xywh {335 45 80 25}
       }
     }
+    code {fc = new Fl_File_Chooser(0, "MT32 SysEx files (*.syx)", Fl_File_Chooser::SINGLE, "Select .syx file to load");
+fc->callback(fc_callback, this);} {}
   }
   Function {FLMuntUI(MuntUIController *controller)} {open
   } {
@@ -41,7 +44,8 @@ c = controller;} {}
   }
   Function {~FLMuntUI()} {open
   } {
-    code {delete w;} {}
+    code {delete w;
+delete fc;} {}
   }
   Function {FLMuntUI(MuntUIController *controller, void* parentWindow)} {open
   } {
@@ -51,5 +55,19 @@ fl_embed(w, (Window)parentWindow);
 c = controller;} {}
   }
   decl {MuntUIController *c;} {private local
+  }
+  decl {Fl_File_Chooser *fc;} {private local
+  }
+  Function {fc_callback(Fl_File_Chooser *fc, void *self)} {open C return_type {static void}
+  } {
+    code {if (fc->shown())
+    return;
+const char *filename = fc->value();
+static_cast<FLMuntUI*>(self)->c->loadSyx(filename);} {selected
+    }
+  }
+  Function {load_syx(const char *filename)} {open return_type void
+  } {
+    code {printf("Hello, World! %s\\n", filename);} {}
   }
 } 

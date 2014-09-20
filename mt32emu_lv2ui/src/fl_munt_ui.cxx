@@ -10,7 +10,7 @@ void FLMuntUI::cb_Debug(Fl_Button* o, void* v) {
 }
 
 void FLMuntUI::cb_Load_i(Fl_Button*, void*) {
-  c->test2();
+  fc->show();
 }
 void FLMuntUI::cb_Load(Fl_Button* o, void* v) {
   ((FLMuntUI*)(o->parent()->user_data()))->cb_Load_i(o,v);
@@ -22,7 +22,7 @@ Fl_Double_Window* FLMuntUI::make_window() {
     { Fl_Button* o = new Fl_Button(335, 15, 80, 25, "Debug");
       o->callback((Fl_Callback*)cb_Debug);
     } // Fl_Button* o
-    { display = new LCDDisplay(45, 47, 246, 24, "Display");
+    { display = new LCDDisplay(45, 46, 244, 24, "Display");
       display->box(FL_NO_BOX);
       display->color(FL_BACKGROUND_COLOR);
       display->selection_color(FL_BACKGROUND_COLOR);
@@ -40,6 +40,8 @@ Fl_Double_Window* FLMuntUI::make_window() {
     } // Fl_Button* o
     w->end();
   } // Fl_Double_Window* w
+  fc = new Fl_File_Chooser(0, "MT32 SysEx files (*.syx)", Fl_File_Chooser::SINGLE, "Select .syx file to load");
+  fc->callback(fc_callback, this);
   return w;
 }
 
@@ -51,6 +53,7 @@ FLMuntUI::FLMuntUI(MuntUIController *controller) {
 
 FLMuntUI::~FLMuntUI() {
   delete w;
+  delete fc;
 }
 
 FLMuntUI::FLMuntUI(MuntUIController *controller, void* parentWindow) {
@@ -58,4 +61,15 @@ FLMuntUI::FLMuntUI(MuntUIController *controller, void* parentWindow) {
   fl_open_display();
   fl_embed(w, (Window)parentWindow);
   c = controller;
+}
+
+void FLMuntUI::fc_callback(Fl_File_Chooser *fc, void *self) {
+  if (fc->shown())
+      return;
+  const char *filename = fc->value();
+  static_cast<FLMuntUI*>(self)->c->loadSyx(filename);
+}
+
+void FLMuntUI::load_syx(const char *filename) {
+  printf("Hello, World! %s\n", filename);
 }

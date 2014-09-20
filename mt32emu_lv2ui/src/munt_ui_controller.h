@@ -9,7 +9,7 @@ public:
     virtual ~MuntUIController() {}
 
     virtual void test1() = 0;
-    virtual void test2() = 0;
+    virtual void loadSyx(const char *filename) = 0;
 };
 
 #endif
