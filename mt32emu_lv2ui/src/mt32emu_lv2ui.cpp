@@ -41,6 +41,8 @@
 #include <FL/Fl_File_Chooser.H>
 #include "munt_ui_controller.h"
 
+#define UNUSED(x) (void)(x)
+
 #define MUNT_URI "http://github.com/munt/munt"
 #define MUNT_URI_UI "http://github.com/munt/munt/gui"
 #define MUNT_URI_EXTERNAL_UI "http://github.com/munt/munt/ui#external"
@@ -237,6 +239,8 @@ static const char* BANK_NAMES[] = {"Synth-1", "Synth-2", "Memory ", "Rhythm "};
 
 void MuntPluginUI::port_event(uint32_t port_index, uint32_t buffer_size, uint32_t format, const void* buffer)
 {
+    UNUSED(buffer_size);
+    UNUSED(port_index);
     Fl::lock();
     if (format == m_uris.atom_eventTransfer) {
         LV2_Atom* atom = (LV2_Atom*)buffer;

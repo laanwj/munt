@@ -29,12 +29,25 @@
 #include "lv2/lv2plug.in/ns/ext/midi/midi.h"
 #include "lv2/lv2plug.in/ns/ext/urid/urid.h"
 #include "lv2/lv2plug.in/ns/ext/log/log.h"
+#include "lv2/lv2plug.in/ns/ext/state/state.h"
 #include "lv2/lv2plug.in/ns/lv2core/lv2.h"
 
 #include <mt32emu/mt32emu.h>
 #include "resample/SampleRateConverter.h"
 
+#define UNUSED(x) (void)(x)
+
+/** This should be common data between UI and DSP */
 #define MUNT_URI "http://github.com/munt/munt"
+/* Sub-URIs for state */
+#define MUNT_URI__PatchTempMemoryRegion    MUNT_URI "#PatchTempMemoryRegion"
+#define MUNT_URI__RhythmTempMemoryRegion   MUNT_URI "#RhythmTempMemoryRegion"
+#define MUNT_URI__TimbreTempMemoryRegion   MUNT_URI "#TimbreTempMemoryRegion"
+#define MUNT_URI__PatchesMemoryRegion      MUNT_URI "#PatchesMemoryRegion"
+#define MUNT_URI__TimbresMemoryRegion      MUNT_URI "#TimbresMemoryRegion"
+#define MUNT_URI__SystemMemoryRegion       MUNT_URI "#SystemMemoryRegion"
+
+/* TODO also define for parameters/events */
 
 enum PortIndex: uint32_t
 {
@@ -43,6 +56,22 @@ enum PortIndex: uint32_t
     OUT_L   = 2,
     OUT_R   = 3
 };
+
+/* List of memory regions to save/restore */
+struct MT32StateRegion
+{
+    const char *uri;
+    uint32_t addr;
+    uint32_t size;
+} mt32_state_regions[]={
+    {MUNT_URI__PatchTempMemoryRegion,  MT32EMU_MEMADDR(0x030000), sizeof(MT32Emu::MemParams::PatchTemp)*9},
+    {MUNT_URI__RhythmTempMemoryRegion, MT32EMU_MEMADDR(0x030110), sizeof(MT32Emu::MemParams::RhythmTemp)*85},
+    {MUNT_URI__TimbreTempMemoryRegion, MT32EMU_MEMADDR(0x040000), sizeof(MT32Emu::TimbreParam)*8},
+    {MUNT_URI__PatchesMemoryRegion,    MT32EMU_MEMADDR(0x050000), sizeof(MT32Emu::PatchParam)*128},
+    {MUNT_URI__TimbresMemoryRegion,    MT32EMU_MEMADDR(0x080000), sizeof(MT32Emu::MemParams::PaddedTimbre)*(64+64+64+64)},
+    {MUNT_URI__SystemMemoryRegion,     MT32EMU_MEMADDR(0x100000), sizeof(MT32Emu::MemParams::System)*1}
+};
+const unsigned int mt32_state_regions_count = sizeof(mt32_state_regions) / sizeof(*mt32_state_regions);
 
 class ReportHandler_LV2;
 
@@ -58,6 +87,11 @@ public:
     void run(uint32_t sample_count);
     void deactivate();
 
+    /// state::interface extension
+    // This saves and restores a snapshot of all the memory regions of the emulated device
+    LV2_State_Status save(LV2_State_Store_Function store, LV2_State_Handle handle, uint32_t flags, const LV2_Feature *const * features);
+    LV2_State_Status restore(LV2_State_Retrieve_Function retrieve, LV2_State_Handle handle, uint32_t flags, const LV2_Feature *const *  features);
+
     struct Features
     {
         LV2_URID_Map* map;
@@ -71,6 +105,7 @@ public:
         LV2_URID log_Trace;
         LV2_URID log_Warning;
         LV2_URID atom_eventTransfer;
+        LV2_URID atom_Chunk;
         // Event type property
         LV2_URID munt_eventType;
         // Event types
@@ -242,6 +277,7 @@ MuntPlugin::MuntPlugin(const LV2_Descriptor* /*descriptor*/, double rate, const 
         m_uris.log_Trace = map->map(map->handle, LV2_LOG__Trace);
         m_uris.log_Warning = map->map(map->handle, LV2_LOG__Warning);
         m_uris.atom_eventTransfer = map->map(map->handle, LV2_ATOM__eventTransfer);
+        m_uris.atom_Chunk = map->map(map->handle, LV2_ATOM__Chunk);
 
         m_uris.munt_eventType = map->map(map->handle, MUNT_URI"#eventType");
         m_uris.munt_evt_showLCDMessage = map->map(map->handle, MUNT_URI"#evt_showLCDMessage");
@@ -422,6 +458,59 @@ void MuntPlugin::deactivate()
     m_controlROMImage = m_pcmROMImage = 0;
 }
 
+LV2_State_Status MuntPlugin::save(LV2_State_Store_Function store, LV2_State_Handle handle, uint32_t flags, const LV2_Feature *const * features)
+{
+    UNUSED(flags);
+    UNUSED(features);
+    if (!m_synth) return LV2_STATE_ERR_UNKNOWN;
+    LV2_URID_Map* map = m_features.map;
+    LV2_State_Status status = LV2_STATE_SUCCESS;
+    /** Save MT32 state, region by region */
+    for (unsigned int r=0; r<mt32_state_regions_count && status == LV2_STATE_SUCCESS; ++r)
+    {
+        const MT32StateRegion &region = mt32_state_regions[r];
+        uint8_t data[region.size];
+        LV2_URID key = map->map(map->handle, region.uri);
+
+        m_synth->readMemory(region.addr, region.size, data);
+        status = store(handle, key, data, region.size, m_uris.atom_Chunk, LV2_STATE_IS_POD|LV2_STATE_IS_PORTABLE);
+        printf("mt32emu_lv2: storing region %s: %08x %08x -> %i\n", region.uri, region.addr, region.size, status);
+        fflush(stdout);
+    }
+    return status;
+}
+
+LV2_State_Status MuntPlugin::restore(LV2_State_Retrieve_Function retrieve, LV2_State_Handle handle, uint32_t flags, const LV2_Feature *const *  features)
+{
+    UNUSED(flags);
+    UNUSED(features);
+    if (!m_synth) return LV2_STATE_ERR_UNKNOWN;
+    LV2_URID_Map* map = m_features.map;
+    /** Restore MT32 state, region by region */
+    for (unsigned int r=0; r<mt32_state_regions_count; ++r)
+    {
+        const MT32StateRegion &region = mt32_state_regions[r];
+        const uint8_t *data;
+        LV2_URID key = map->map(map->handle, region.uri);
+        size_t size = 0;
+        uint32_t type = 0;
+        uint32_t flags = 0;
+
+        data = (const uint8_t*)retrieve(handle, key, &size, &type, &flags);
+        if (size > region.size)
+        {
+            printf("mt32emu_lv2: warning: retrieved data for region %s larger than expected\n", region.uri);
+            fflush(stdout);
+            size = region.size;
+        }
+        printf("mt32emu_lv2: retrieving region %s: %08x %08x -> %p\n", region.uri, region.addr, region.size, data);
+        fflush(stdout);
+        if (data)
+            m_synth->writeMemory(region.addr, size, data);
+    }
+    return LV2_STATE_SUCCESS;
+}
+
 //////////////////////////////////////////
 // LV2 plugin C++ wrapper
 
@@ -469,9 +558,36 @@ cleanup(LV2_Handle instance)
     delete static_cast<MuntPlugin*>(instance);
 }
 
+static LV2_State_Status
+save(LV2_Handle                 instance,
+        LV2_State_Store_Function   store,
+        LV2_State_Handle           handle,
+        uint32_t                   flags,
+        const LV2_Feature *const * features)
+{
+    return static_cast<MuntPlugin*>(instance)->save(store, handle, flags, features);
+}
+
+LV2_State_Status
+restore(LV2_Handle                  instance,
+           LV2_State_Retrieve_Function retrieve,
+           LV2_State_Handle            handle,
+           uint32_t                    flags,
+           const LV2_Feature *const *  features)
+{
+    return static_cast<MuntPlugin*>(instance)->restore(retrieve, handle, flags, features);
+}
+
+static const LV2_State_Interface state_iface = {
+    save,
+    restore
+};
+
 static const void*
 extension_data(const char* uri)
 {
+    if (!strcmp(uri, LV2_STATE__interface))
+        return &state_iface;
     return NULL;
 }
 
