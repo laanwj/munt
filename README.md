@@ -3,7 +3,7 @@ mt32emu_lv2
 
 mt32emu_lv2 is a LV2 plugin that approximately emulates the Roland MT-32, CM-32L and LAPC-I synthesizer modules.
 It uses the Munt MT-32 emulator (which is included in the repository). Like the famous Roland D-50, the MT-32
-and similar modules make use of Linear Arithmetic synthesis.
+generates sound with a combination of Linear Arithmetic synthesis and samples for the attack transients.
 
 As a LV2 plugin it can be used in plugin hosts such as [Carla](http://kxstudio.sourceforge.net/Applications:Carla),
 or directly in some sequencers such as [QTractor](http://qtractor.sourceforge.net/qtractor-index.html). It has been
@@ -20,9 +20,9 @@ It has a basic GUI that shows the current part status (similar to mt32emu_qt) an
 Known issues
 --------------
 
-- Load/Save state extension not implemented (could use .syx dump)
 - GUI is very basic (I could use help with design)
 - Aimed at Linux. The underlying Munt library is portable, and as NTK is used for the UI, portability to Windows or MacOSX should be possible, but was never tested.
+- No way to edit instrument settings in the GUI; however it is possible to load syx banks provided by an external SysEx librarion
 
 Install
 ---------
@@ -100,6 +100,7 @@ Some hosts, for example Carla, may have to be configued to let those through ins
 TODOs
 ------
 
+- Expose Reverb settings through port parameters (synth allows overriding these, see setReverbOverridden)
 - How useful can this be made without the MT-32 roms, can we make a standalone
   LA synth? Is it 'just' a matter of providing our own presets and samples?
 - Figure out whether it makes sense to pass `MT32EMU_USE_FLOAT_SAMPLES` to render to floats directly
