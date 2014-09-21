@@ -427,7 +427,7 @@ void MuntPlugin::run(uint32_t sample_count)
 
 void MuntPlugin::deactivate()
 {
-    delete m_converter;
+    delete m_converter; m_converter = 0;
     if (m_synth)
         m_synth->close();
     delete m_synth; m_synth = 0;
