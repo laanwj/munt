@@ -20,7 +20,7 @@
 
 <http://github.com/munt/munt>
         a lv2:InstrumentPlugin, lv2:Plugin ;
-        doap:name "Munt MT32 Emu" ;
+        doap:name "Munt MT-32 Emulator" ;
         doap:license <http://opensource.org/licenses/gpl> ;
         lv2:project <http://lv2plug.in/ns/lv2> ;
         lv2:requiredFeature urid:map ;
