@@ -47,7 +47,7 @@ struct MT32StateRegion
     {MUNT_URI__RhythmTempMemoryRegion, MT32EMU_MEMADDR(0x030110), sizeof(MT32Emu::MemParams::RhythmTemp)*85},
     {MUNT_URI__TimbreTempMemoryRegion, MT32EMU_MEMADDR(0x040000), sizeof(MT32Emu::TimbreParam)*8},
     {MUNT_URI__PatchesMemoryRegion,    MT32EMU_MEMADDR(0x050000), sizeof(MT32Emu::PatchParam)*128},
-    {MUNT_URI__TimbresMemoryRegion,    MT32EMU_MEMADDR(0x080000), sizeof(MT32Emu::MemParams::PaddedTimbre)*(64+64+64+64)},
+    {MUNT_URI__TimbresMemoryRegion,    MT32EMU_MEMADDR(0x080000), sizeof(MT32Emu::MemParams::PaddedTimbre)*64},
     {MUNT_URI__SystemMemoryRegion,     MT32EMU_MEMADDR(0x100000), sizeof(MT32Emu::MemParams::System)*1}
 };
 const unsigned int mt32_state_regions_count = sizeof(mt32_state_regions) / sizeof(*mt32_state_regions);
@@ -122,6 +122,9 @@ private:
     SampleRateConverter *m_converter;
     LV2_Atom_Forge m_forge;
     LV2_Atom_Forge_Frame m_notify_frame;
+
+    void initSynth();
+    void deinitSynth();
 };
 
 /** Reporthandler that passes on events to UI through
@@ -142,6 +145,7 @@ protected:
     {
         //m_features.log->vprintf(m_features.log->handle, m_uris.log_Note, fmt, list);
         //m_features.log->printf(m_features.log->handle, m_uris.log_Note, "\n");
+
         vfprintf(stderr, fmt, list);
         fputs("\n", stderr);
         fflush(stderr);
@@ -273,10 +277,13 @@ MuntPlugin::MuntPlugin(const LV2_Descriptor* /*descriptor*/, double rate, const 
     lv2_atom_forge_init(&m_forge, m_features.map);
 
     m_bundlePath = bundle_path;
+
+    initSynth();
 }
 
 MuntPlugin::~MuntPlugin()
 {
+    deinitSynth();
 }
 
 void MuntPlugin::connect_port(uint32_t port, void* data)
@@ -328,7 +335,7 @@ const MT32Emu::ROMImage *loadROMImage(const std::string &filename)
     return image;
 }
 
-void MuntPlugin::activate()
+void MuntPlugin::initSynth()
 {
     m_reportHandler = new ReportHandler_LV2(m_features, m_uris, m_forge);
     m_synth = new MT32Emu::Synth(m_reportHandler);
@@ -360,6 +367,25 @@ void MuntPlugin::activate()
         fflush(stdout);
     }
     m_rateRatio = MT32Emu::SAMPLE_RATE / m_rate;
+}
+
+void MuntPlugin::deinitSynth()
+{
+    delete m_converter; m_converter = 0;
+    if (m_synth)
+        m_synth->close();
+    delete m_synth; m_synth = 0;
+
+    deleteROMImage(m_controlROMImage);
+    deleteROMImage(m_pcmROMImage);
+    m_controlROMImage = m_pcmROMImage = 0;
+}
+
+void MuntPlugin::activate()
+{
+    // Should restart synth here (make sure no partials are running etc), but preserve state
+    // Cannot do initSynth here because qtractor and such
+    // rely on being able to save/restore state without the synth being active.
 }
 
 void MuntPlugin::run(uint32_t sample_count)
@@ -427,14 +453,6 @@ void MuntPlugin::run(uint32_t sample_count)
 
 void MuntPlugin::deactivate()
 {
-    delete m_converter; m_converter = 0;
-    if (m_synth)
-        m_synth->close();
-    delete m_synth; m_synth = 0;
-
-    deleteROMImage(m_controlROMImage);
-    deleteROMImage(m_pcmROMImage);
-    m_controlROMImage = m_pcmROMImage = 0;
 }
 
 LV2_State_Status MuntPlugin::save(LV2_State_Store_Function store, LV2_State_Handle handle, uint32_t flags, const LV2_Feature *const * features)
