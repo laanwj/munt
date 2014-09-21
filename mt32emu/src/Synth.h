@@ -538,6 +538,9 @@ public:
 
 	// partNum should be 0..7 for Part 1..8, or 8 for Rhythm
 	const Part *getPart(unsigned int partNum) const;
+
+	// Soft reset: stop all sound, reset controllers, but don't reset SysEx state
+	void softReset();
 };
 
 }

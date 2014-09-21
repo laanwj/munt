@@ -1728,4 +1728,12 @@ void MemoryRegion::write(unsigned int entry, unsigned int off, const Bit8u *src,
 	}
 }
 
+void Synth::softReset() {
+	partialManager->deactivateAll();
+	for (int i = 0; i < 9; i++) {
+		parts[i]->reset();
+	}
+	isEnabled = false;
+}
+
 }

@@ -383,9 +383,6 @@ void MuntPlugin::deinitSynth()
 
 void MuntPlugin::activate()
 {
-    // Should restart synth here (make sure no partials are running etc), but preserve state
-    // Cannot do initSynth here because qtractor and such
-    // rely on being able to save/restore state without the synth being active.
 }
 
 void MuntPlugin::run(uint32_t sample_count)
@@ -414,7 +411,7 @@ void MuntPlugin::run(uint32_t sample_count)
             else
             {
                 m_synth->playSysex(evdata, ev->body.size, timeScaled);
-                printf("sysex t=%08x st=%08x size=%08x\n", (unsigned)timeTarget, (unsigned)timeScaled, ev->body.size);
+                //printf("sysex t=%08x st=%08x size=%08x\n", (unsigned)timeTarget, (unsigned)timeScaled, ev->body.size);
                 fflush(stdout);
             }
         }
@@ -453,6 +450,8 @@ void MuntPlugin::run(uint32_t sample_count)
 
 void MuntPlugin::deactivate()
 {
+    if (m_synth)
+        m_synth->softReset();
 }
 
 LV2_State_Status MuntPlugin::save(LV2_State_Store_Function store, LV2_State_Handle handle, uint32_t flags, const LV2_Feature *const * features)
