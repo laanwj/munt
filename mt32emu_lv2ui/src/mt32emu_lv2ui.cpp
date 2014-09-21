@@ -24,6 +24,7 @@
 #include <sstream>
 #include <unistd.h>
 #include <vector>
+#include <limits>
 
 #include "lv2/lv2plug.in/ns/ext/atom/atom.h"
 #include "lv2/lv2plug.in/ns/ext/atom/forge.h"
@@ -350,7 +351,7 @@ void MuntPluginUI::loadSyx(const char *filename)
     printf("Read %i bytes from syx file\n", (int)nread);
     m_syxData = std::vector<uint8_t>(buffer, buffer+nread);
     m_syxOffset = 0;
-    m_syxStart = 0;
+    m_syxStart = std::numeric_limits<size_t>::max();
 
     m_displayProgress = 0.0;
     displayMessage(DisplayState::PROGRESS, std::string("Loading ") + fl_filename_name(filename) + "...", 0.0);
@@ -365,7 +366,7 @@ bool MuntPluginUI::syxProcessEvents(size_t numBytes)
     while (m_syxOffset < end) {
         if (m_syxData[m_syxOffset] == 0xf0)
             m_syxStart = m_syxOffset;
-        if (m_syxData[m_syxOffset] == 0xf7 && m_syxStart != 0)
+        if (m_syxData[m_syxOffset] == 0xf7 && m_syxStart != std::numeric_limits<size_t>::max())
         {
             m_displayProgress = (double)m_syxOffset / m_syxData.size();
             updateDisplay();
