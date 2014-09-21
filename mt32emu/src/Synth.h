@@ -216,7 +216,7 @@ public:
 };
 class TimbresMemoryRegion : public MemoryRegion {
 public:
-	TimbresMemoryRegion(Synth *useSynth, Bit8u *useRealMemory, Bit8u *useMaxTable) : MemoryRegion(useSynth, useRealMemory, useMaxTable, MR_Timbres, MT32EMU_MEMADDR(0x080000), sizeof(MemParams::PaddedTimbre), 64 + 64 + 64 + 64) {}
+	TimbresMemoryRegion(Synth *useSynth, Bit8u *useRealMemory, Bit8u *useMaxTable) : MemoryRegion(useSynth, useRealMemory, useMaxTable, MR_Timbres, MT32EMU_MEMADDR(0x060000), sizeof(MemParams::PaddedTimbre), 64 + 64 + 64 + 64) {}
 };
 class SystemMemoryRegion : public MemoryRegion {
 public:

@@ -1116,8 +1116,8 @@ void Synth::writeMemoryRegion(const MemoryRegion *region, Bit32u addr, Bit32u le
 		break;
 	case MR_Timbres:
 		// Timbres
-		first += 128;
-		last += 128;
+		// first += 128;
+		// last += 128;
 		region->write(first, off, data, len);
 		for (unsigned int i = first; i <= last; i++) {
 #if MT32EMU_MONITOR_TIMBRES >= 1
