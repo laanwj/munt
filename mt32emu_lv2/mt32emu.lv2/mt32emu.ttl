@@ -6,6 +6,7 @@
 @prefix urid: <http://lv2plug.in/ns/ext/urid#> .
 @prefix state: <http://lv2plug.in/ns/ext/state#> .
 @prefix ui:   <http://lv2plug.in/ns/extensions/ui#> .
+@prefix rsz: <http://lv2plug.in/ns/ext/resize-port> .
 
 <http://github.com/munt/munt/gui>
         a ui:X11UI ;
@@ -25,6 +26,7 @@
         lv2:project <http://lv2plug.in/ns/lv2> ;
         lv2:requiredFeature urid:map ;
         lv2:optionalFeature lv2:hardRTCapable ;
+        lv2:optionalFeature rsz:resize ;
         lv2:extensionData state:interface ;
         ui:ui <http://github.com/munt/munt/gui> ;
         lv2:port [
@@ -32,6 +34,7 @@
                 atom:AtomPort ;
                 atom:bufferType atom:Sequence ;
                 atom:supports midi:MidiEvent ;
+                rsz:minimumSize 32767 ;
                 lv2:designation lv2:control ;
                 lv2:index 0 ;
                 lv2:symbol "control" ;
@@ -40,9 +43,10 @@
                 a lv2:OutputPort ,
                 atom:AtomPort ;
                 atom:bufferType atom:Sequence ;
+                rsz:minimumSize 32767 ;
                 lv2:index 1 ;
                 lv2:symbol "notify" ;
-                lv2:name "Notify";
+                lv2:name "Notify"
         ] , [
                 a lv2:AudioPort ,
                 lv2:OutputPort ;

@@ -154,8 +154,6 @@ private:
      * Return true when finished, false if more events have to be processed.
      */
     bool syxProcessEvents(size_t numBytes);
-    /** Syx timeout function, send some events */
-    static void syxTimeout(void *self);
 };
 
 MuntPluginUI::MuntPluginUI(const char* bundle_path, LV2UI_Write_Function write_function,
@@ -355,7 +353,6 @@ void MuntPluginUI::loadSyx(const char *filename)
 
     m_displayProgress = 0.0;
     displayMessage(DisplayState::PROGRESS, std::string("Loading ") + fl_filename_name(filename) + "...", 0.0);
-    Fl::add_timeout(0.05, syxTimeout, this);
 }
 
 bool MuntPluginUI::syxProcessEvents(size_t numBytes)
@@ -384,13 +381,6 @@ bool MuntPluginUI::syxProcessEvents(size_t numBytes)
     } else {
         return false;
     }
-}
-
-void MuntPluginUI::syxTimeout(void *self_)
-{
-    MuntPluginUI *self = static_cast<MuntPluginUI*>(self_);
-    if (!self->syxProcessEvents(1000))
-        Fl::repeat_timeout(0.05, syxTimeout, self);
 }
 
 void MuntPluginUI::initDisplay()
@@ -462,6 +452,8 @@ int MuntPluginUI::idle()
 {
     Fl::check();
     Fl::flush();
+    if (!m_syxData.empty())
+        syxProcessEvents(1000);
     return 0;
 }
 
