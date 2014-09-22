@@ -165,8 +165,7 @@ MuntPluginUI::MuntPluginUI(const char* bundle_path, LV2UI_Write_Function write_f
     memset(&m_features, 0, sizeof(m_features));
     memset(&m_uris, 0, sizeof(m_uris));
 
-    for (int i = 0; features[i]; ++i)
-    {
+    for (int i = 0; features[i]; ++i) {
         if (!strcmp(features[i]->URI, LV2_URID__map))
             m_features.map = (LV2_URID_Map*)features[i]->data;
         if (!strcmp(features[i]->URI, LV2_UI__parent))
@@ -175,8 +174,7 @@ MuntPluginUI::MuntPluginUI(const char* bundle_path, LV2UI_Write_Function write_f
             resize = (LV2UI_Resize*)features[i]->data;
     }
 
-    if (m_features.map)
-    {
+    if (m_features.map) {
         LV2_URID_Map* map = m_features.map;
         m_uris.midi_MidiEvent = map->map(map->handle, LV2_MIDI__MidiEvent);
         m_uris.atom_Object = map->map(map->handle, LV2_ATOM__Object);
@@ -245,14 +243,13 @@ void MuntPluginUI::port_event(uint32_t port_index, uint32_t buffer_size, uint32_
         if (eventType->body == m_uris.munt_evt_showLCDMessage) {
             const LV2_Atom_String* message = NULL;
             lv2_atom_object_get(obj, m_uris.munt_arg_message, &message, 0);
-            if (!message || message->atom.type != m_uris.atom_String)
-            {
+            if (!message || message->atom.type != m_uris.atom_String) {
                 fprintf(stderr, "mt32emu_lv2ui: invalid showLCDMessage message\n");
                 fflush(stderr);
                 return;
             }
             displayMessage(DisplayState::MESSAGE, atomToString(message), 3.0);
-        } else if(eventType->body == m_uris.munt_evt_onPolyStateChanged) {
+        } else if (eventType->body == m_uris.munt_evt_onPolyStateChanged) {
             const LV2_Atom_Int* partNum = NULL;
             const LV2_Atom_Int* numPolys = NULL;
             const LV2_Atom_Int* numPolysNonReleasing = NULL;
@@ -262,8 +259,7 @@ void MuntPluginUI::port_event(uint32_t port_index, uint32_t buffer_size, uint32_
                                      0);
             if (!partNum || !numPolys || !numPolysNonReleasing ||
                  partNum->atom.type != m_uris.atom_Int || numPolys->atom.type != m_uris.atom_Int || numPolysNonReleasing->atom.type != m_uris.atom_Int ||
-                 partNum->body < 0 || partNum->body >= int(NUM_PARTS))
-            {
+                 partNum->body < 0 || partNum->body >= int(NUM_PARTS)) {
                 fprintf(stderr, "mt32emu_lv2ui: invalid onProgramChanged message\n");
                 fflush(stderr);
                 return;
@@ -272,7 +268,7 @@ void MuntPluginUI::port_event(uint32_t port_index, uint32_t buffer_size, uint32_
             //        partNum->body, numPolys->body, numPolysNonReleasing->body);
             m_polyState[partNum->body] = numPolysNonReleasing->body;
             updateDisplay();
-        } else if(eventType->body == m_uris.munt_evt_onProgramChanged) {
+        } else if (eventType->body == m_uris.munt_evt_onProgramChanged) {
             const LV2_Atom_Int* partNum = NULL;
             const LV2_Atom_Int* bankNum = NULL;
             const LV2_Atom_String* patchName = NULL;
@@ -283,8 +279,7 @@ void MuntPluginUI::port_event(uint32_t port_index, uint32_t buffer_size, uint32_
             if (!partNum || !bankNum || !patchName ||
                  partNum->atom.type != m_uris.atom_Int || bankNum->atom.type != m_uris.atom_Int || patchName->atom.type != m_uris.atom_String ||
                  partNum->body < 0 || partNum->body >= int(NUM_PARTS) ||
-                 bankNum->body < 0 || bankNum->body >= int(NUM_BANKS))
-            {
+                 bankNum->body < 0 || bankNum->body >= int(NUM_BANKS)) {
                 fprintf(stderr, "mt32emu_lv2ui: invalid onProgramChanged message\n");
                 fflush(stderr);
                 return;
@@ -317,8 +312,7 @@ void MuntPluginUI::test1()
 
 void MuntPluginUI::sendMidi(void *data_in, size_t size_in)
 {
-    if(sizeof(LV2_Atom) + size_in >= 1024)
-    {
+    if (sizeof(LV2_Atom) + size_in >= 1024) {
         fprintf(stdout, "mt32emu_lv2ui: Sending MIDI event too large (%i)\n", (int)size_in);
         return;
     }
@@ -338,8 +332,7 @@ void MuntPluginUI::loadSyx(const char *filename)
     if (!m_syxData.empty()) // Still loading a previous syx
         return;
     FILE *f = fopen(filename, "rb");
-    if (!f)
-    {
+    if (!f) {
         printf("Unable to open file %s\n", filename);
         return;
     }
@@ -363,8 +356,7 @@ bool MuntPluginUI::syxProcessEvents(size_t numBytes)
     while (m_syxOffset < end) {
         if (m_syxData[m_syxOffset] == 0xf0)
             m_syxStart = m_syxOffset;
-        if (m_syxData[m_syxOffset] == 0xf7 && m_syxStart != std::numeric_limits<size_t>::max())
-        {
+        if (m_syxData[m_syxOffset] == 0xf7 && m_syxStart != std::numeric_limits<size_t>::max()) {
             m_displayProgress = (double)m_syxOffset / m_syxData.size();
             updateDisplay();
             // printf("  Event m_syxStart=%u size=%u\n", (unsigned)m_syxStart, (unsigned)(m_syxOffset-m_syxStart+1));
@@ -372,8 +364,7 @@ bool MuntPluginUI::syxProcessEvents(size_t numBytes)
         }
         ++m_syxOffset;
     }
-    if (m_syxOffset == m_syxData.size())
-    {
+    if (m_syxOffset == m_syxData.size()) {
         m_displayStates &= ~(1 << DisplayState::PROGRESS);
         updateDisplay();
         m_syxData.clear();
@@ -385,8 +376,7 @@ bool MuntPluginUI::syxProcessEvents(size_t numBytes)
 
 void MuntPluginUI::initDisplay()
 {
-    for (unsigned int i=0; i<DisplayState::NumStates; ++i)
-    {
+    for (unsigned int i=0; i<DisplayState::NumStates; ++i) {
         m_displayStatesData[i].id = DisplayState(i);
         m_displayStatesData[i].parent = this;
     }
@@ -414,11 +404,9 @@ void MuntPluginUI::updateDisplay()
         return;
     const DisplayStateData &curStateData = m_displayStatesData[curStateId];
     const std::string &displayMessage = curStateData.displayMessage;
-    switch(curStateId)
-    {
+    switch (curStateId) {
     case DisplayState::PARTS:
-        for (unsigned int i=0; i<9; ++i)
-        {
+        for (unsigned int i=0; i<9; ++i) {
             if (m_polyState[i])
                 display[i*2] = 128;
             else
@@ -525,8 +513,7 @@ LV2_SYMBOL_EXPORT
 __attribute__ ((visibility ("default")))
 const LV2UI_Descriptor *lv2ui_descriptor ( uint32_t index )
 {
-    switch (index)
-    {
+    switch (index) {
     case 0: return &descriptor;
     default: return NULL;
     }

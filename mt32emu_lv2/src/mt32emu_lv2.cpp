@@ -243,16 +243,14 @@ MuntPlugin::MuntPlugin(const LV2_Descriptor* /*descriptor*/, double rate, const 
     memset(&m_uris, 0, sizeof(m_uris));
     memset(&m_ports, 0, sizeof(m_ports));
 
-    for (int i = 0; features[i]; ++i)
-    {
+    for (int i = 0; features[i]; ++i) {
         if (!strcmp(features[i]->URI, LV2_URID__map))
             m_features.map = (LV2_URID_Map*)features[i]->data;
         if (!strcmp(features[i]->URI, LV2_LOG__log))
             m_features.log = (LV2_Log_Log*)features[i]->data;
     }
 
-    if (m_features.map)
-    {
+    if (m_features.map) {
         LV2_URID_Map* map = m_features.map;
         m_uris.midi_MidiEvent = map->map(map->handle, LV2_MIDI__MidiEvent);
         m_uris.log_Error = map->map(map->handle, LV2_LOG__Error);
@@ -288,8 +286,7 @@ MuntPlugin::~MuntPlugin()
 
 void MuntPlugin::connect_port(uint32_t port, void* data)
 {
-    switch(port)
-    {
+    switch (port) {
     case PortIndex::CONTROL:
         m_ports.control = static_cast<const LV2_Atom_Sequence*>(data);
         break;
@@ -316,8 +313,7 @@ void deleteROMImage(const MT32Emu::ROMImage *image)
 const MT32Emu::ROMImage *loadROMImage(const std::string &filename)
 {
     MT32Emu::FileStream *file = new MT32Emu::FileStream();
-    if (!file->open(filename.c_str()))
-    {
+    if (!file->open(filename.c_str())) {
         fprintf(stderr, "Unable to open ROM image %s\n", filename.c_str());
         fflush(stderr);
         delete file;
@@ -325,8 +321,7 @@ const MT32Emu::ROMImage *loadROMImage(const std::string &filename)
     }
 
     const MT32Emu::ROMImage *image = MT32Emu::ROMImage::makeROMImage(file);
-    if (image->getROMInfo() == NULL)
-    {
+    if (image->getROMInfo() == NULL) {
         fprintf(stderr, "Could not identify ROM image %s\n", filename.c_str());
         fflush(stderr);
         deleteROMImage(image);
@@ -343,8 +338,7 @@ void MuntPlugin::initSynth()
 
     m_controlROMImage = loadROMImage(m_bundlePath + "/control.rom");
     m_pcmROMImage = loadROMImage(m_bundlePath + "/pcm.rom");
-    if (!m_controlROMImage || !m_pcmROMImage)
-    {
+    if (!m_controlROMImage || !m_pcmROMImage) {
         fprintf(stderr, "Unable to open ROM images, not activating\n");
         fflush(stderr);
         delete m_synth; m_synth = 0;
@@ -353,15 +347,13 @@ void MuntPlugin::initSynth()
     printf("Control ROM: %s\n", m_controlROMImage->getROMInfo()->description);
     printf("PCM ROM: %s\n", m_pcmROMImage->getROMInfo()->description);
 
-    if (!m_synth->open(*m_controlROMImage, *m_pcmROMImage, MT32Emu::DEFAULT_MAX_PARTIALS))
-    {
+    if (!m_synth->open(*m_controlROMImage, *m_pcmROMImage, MT32Emu::DEFAULT_MAX_PARTIALS)) {
         fprintf(stderr, "Unable to open synth, not activating\n");
         fflush(stderr);
         return;
     }
     m_timestamp = 0;
-    if (m_rate != MT32Emu::SAMPLE_RATE)
-    {
+    if (m_rate != MT32Emu::SAMPLE_RATE) {
         m_converter = SampleRateConverter::createSampleRateConverter(m_synth, m_rate);
         fprintf(stdout, "Converting sample rate from %f to %f\n", (double)MT32Emu::SAMPLE_RATE, m_rate);
         fflush(stdout);
@@ -394,29 +386,22 @@ void MuntPlugin::run(uint32_t sample_count)
     lv2_atom_forge_set_buffer(&m_forge, (uint8_t*)m_ports.notify, m_ports.notify->atom.size);
     lv2_atom_forge_sequence_head(&m_forge, &m_notify_frame, 0);
 
-    LV2_ATOM_SEQUENCE_FOREACH(m_ports.control, ev)
-    {
-        if (ev->body.type == m_uris.midi_MidiEvent && ev->body.size > 0)
-        {
+    LV2_ATOM_SEQUENCE_FOREACH(m_ports.control, ev) {
+        if (ev->body.type == m_uris.midi_MidiEvent && ev->body.size > 0) {
             const uint8_t *evdata = (uint8_t *)LV2_ATOM_BODY(&ev->body);
             uint64_t timeTarget = m_timestamp + ev->time.frames;
             uint64_t timeScaled = timeTarget * m_rateRatio;
-            if (evdata[0] != LV2_MIDI_MSG_SYSTEM_EXCLUSIVE)
-            {
+            if (evdata[0] != LV2_MIDI_MSG_SYSTEM_EXCLUSIVE) {
                 MT32Emu::Bit32u msg = 0;
                 for (unsigned i=0; i<ev->body.size; ++i)
                     msg |= evdata[i] << (i*8);
                 m_synth->playMsg(msg, timeScaled);
-            }
-            else
-            {
+            } else {
                 m_synth->playSysex(evdata, ev->body.size, timeScaled);
                 //printf("sysex t=%08x st=%08x size=%08x\n", (unsigned)timeTarget, (unsigned)timeScaled, ev->body.size);
                 fflush(stdout);
             }
-        }
-        else
-        {
+        } else {
             printf("mt32emu_lv2: Unknown event type %i\n", ev->body.type);
             fflush(stdout);
         }
@@ -424,8 +409,7 @@ void MuntPlugin::run(uint32_t sample_count)
 
     MT32Emu::Sample samples[MT32Emu::MAX_SAMPLES_PER_RUN*2];
     uint32_t offset = 0;
-    while(offset < sample_count)
-    {
+    while(offset < sample_count) {
         uint32_t framesToRender = std::min(sample_count - offset, MT32Emu::MAX_SAMPLES_PER_RUN);
 
         if (m_converter)
@@ -433,8 +417,7 @@ void MuntPlugin::run(uint32_t sample_count)
         else
             m_synth->render(samples, framesToRender);
 
-        for(unsigned x=0; x<framesToRender; ++x)
-        {
+        for(unsigned x=0; x<framesToRender; ++x) {
 #if MT32EMU_USE_FLOAT_SAMPLES
             m_ports.out[0][offset] = samples[x*2+0];
             m_ports.out[1][offset] = samples[x*2+1];
@@ -462,8 +445,7 @@ LV2_State_Status MuntPlugin::save(LV2_State_Store_Function store, LV2_State_Hand
     LV2_URID_Map* map = m_features.map;
     LV2_State_Status status = LV2_STATE_SUCCESS;
     /** Save MT32 state, region by region */
-    for (unsigned int r=0; r<mt32_state_regions_count && status == LV2_STATE_SUCCESS; ++r)
-    {
+    for (unsigned int r=0; r<mt32_state_regions_count && status == LV2_STATE_SUCCESS; ++r) {
         const MT32StateRegion &region = mt32_state_regions[r];
         uint8_t data[region.size];
         LV2_URID key = map->map(map->handle, region.uri);
@@ -483,8 +465,7 @@ LV2_State_Status MuntPlugin::restore(LV2_State_Retrieve_Function retrieve, LV2_S
     if (!m_synth) return LV2_STATE_ERR_UNKNOWN;
     LV2_URID_Map* map = m_features.map;
     /** Restore MT32 state, region by region */
-    for (unsigned int r=0; r<mt32_state_regions_count; ++r)
-    {
+    for (unsigned int r=0; r<mt32_state_regions_count; ++r) {
         const MT32StateRegion &region = mt32_state_regions[r];
         const uint8_t *data;
         LV2_URID key = map->map(map->handle, region.uri);
@@ -493,8 +474,7 @@ LV2_State_Status MuntPlugin::restore(LV2_State_Retrieve_Function retrieve, LV2_S
         uint32_t flags = 0;
 
         data = (const uint8_t*)retrieve(handle, key, &size, &type, &flags);
-        if (size > region.size)
-        {
+        if (size > region.size) {
             printf("mt32emu_lv2: warning: retrieved data for region %s larger than expected\n", region.uri);
             fflush(stdout);
             size = region.size;
@@ -603,8 +583,7 @@ __attribute__ ((visibility ("default")))
 const LV2_Descriptor*
 lv2_descriptor(uint32_t index)
 {
-    switch (index)
-    {
+    switch (index) {
     case 0: return &descriptor;
     default: return NULL;
     }
