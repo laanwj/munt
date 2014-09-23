@@ -34,9 +34,16 @@
 enum PortIndex: uint32_t
 {
     CONTROL = 0,
-    NOTIFY  = 1,
-    OUT_L   = 2,
-    OUT_R   = 3
+    NOTIFY = 1,
+    OUT_L = 2,
+    OUT_R = 3,
+    REVERB_ENABLE = 4,
+    REVERB_OVERRIDE = 5,
+    REVERB_MODE = 6,
+    REVERB_TIME = 7,
+    REVERB_LEVEL = 8,
+    OUTPUT_GAIN = 9,
+    REVERB_OUTPUT_GAIN = 10
 };
 
 #endif

@@ -7,6 +7,8 @@
 @prefix state: <http://lv2plug.in/ns/ext/state#> .
 @prefix ui:   <http://lv2plug.in/ns/extensions/ui#> .
 @prefix rsz: <http://lv2plug.in/ns/ext/resize-port> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
 
 <http://github.com/munt/munt/gui>
         a ui:X11UI ;
@@ -59,5 +61,79 @@
                 lv2:index 3 ;
                 lv2:symbol "out_r" ;
                 lv2:name "Audio Out R"
+        ] ;
+        lv2:port [
+                a lv2:InputPort ,
+                lv2:ControlPort ;
+                lv2:index 4 ;
+                lv2:symbol "reverb_enable" ;
+                lv2:name "Reverb Enable" ;
+                lv2:portProperty lv2:toggled ;
+                lv2:default 1 ;
+                lv2:minimum 0 ;
+                lv2:maximum 1 ;
+        ] , [
+                a lv2:InputPort ,
+                lv2:ControlPort ;
+                lv2:index 5 ;
+                lv2:symbol "reverb_override" ;
+                lv2:name "Reverb Override" ;
+                lv2:portProperty lv2:toggled ;
+                lv2:default 0 ;
+                lv2:minimum 0 ;
+                lv2:maximum 1 ;
+        ] , [
+                a lv2:InputPort ,
+                lv2:ControlPort ;
+                lv2:index 6 ;
+                lv2:symbol "reverb_mode" ;
+                lv2:name "Reverb Mode" ;
+                lv2:portProperty lv2:integer ;
+                lv2:portProperty lv2:enumeration ;
+                lv2:scalePoint [ rdfs:label "Room"; rdf:value 0 ] ;
+                lv2:scalePoint [ rdfs:label "Hall"; rdf:value 1 ] ;
+                lv2:scalePoint [ rdfs:label "Plate"; rdf:value 2 ] ;
+                lv2:scalePoint [ rdfs:label "Tap Delay"; rdf:value 3 ] ;
+                lv2:default 0 ;
+                lv2:minimum 0 ;
+                lv2:maximum 3 ;
+        ] , [
+                a lv2:InputPort ,
+                lv2:ControlPort ;
+                lv2:index 7 ;
+                lv2:symbol "reverb_time" ;
+                lv2:name "Reverb Time" ;
+                lv2:portProperty lv2:integer ;
+                lv2:default 5 ;
+                lv2:minimum 0 ;
+                lv2:maximum 7 ;
+        ] , [
+                a lv2:InputPort ,
+                lv2:ControlPort ;
+                lv2:index 8 ;
+                lv2:symbol "reverb_level" ;
+                lv2:name "Reverb Level" ;
+                lv2:portProperty lv2:integer ;
+                lv2:default 3 ;
+                lv2:minimum 0 ;
+                lv2:maximum 7 ;
+        ] ;
+        lv2:port [
+                a lv2:InputPort ,
+                lv2:ControlPort ;
+                lv2:index 9 ;
+                lv2:symbol "output_gain" ;
+                lv2:name "Output Gain" ;
+                lv2:default 1.0 ;
+                lv2:minimum 0.0 ;
+                lv2:maximum 4.0 ;
+        ] , [
+                a lv2:InputPort ,
+                lv2:ControlPort ;
+                lv2:index 10 ;
+                lv2:symbol "reverb_output_gain" ;
+                lv2:name "Reverb Output Gain" ;
+                lv2:default 1.0 ;
+                lv2:minimum 0.0 ;
+                lv2:maximum 4.0 ;
         ] .
-

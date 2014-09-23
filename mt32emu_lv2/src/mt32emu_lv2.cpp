@@ -107,7 +107,24 @@ private:
         const LV2_Atom_Sequence* control;
         LV2_Atom_Sequence* notify;
         float *out[2];
+        float *reverb_enable;
+        float *reverb_override;
+        float *reverb_mode;
+        float *reverb_time;
+        float *reverb_level;
+        float *output_gain;
+        float *reverb_output_gain;
     } m_ports;
+    struct PortValues
+    {
+        bool reverb_enable;
+        bool reverb_override; // if true, override sysex settings with port parameters
+        uint8_t reverb_mode;
+        uint8_t reverb_time;
+        uint8_t reverb_level;
+        float output_gain;
+        float reverb_output_gain;
+    } m_port_values;
 
     std::string m_bundlePath;
     double m_rate;
@@ -125,6 +142,8 @@ private:
 
     void initSynth();
     void deinitSynth();
+    /** Detect changes to parameter ports and apply them */
+    void handleParameterChanges();
 };
 
 /** Reporthandler that passes on events to UI through
@@ -242,6 +261,8 @@ MuntPlugin::MuntPlugin(const LV2_Descriptor* /*descriptor*/, double rate, const 
     memset(&m_features, 0, sizeof(m_features));
     memset(&m_uris, 0, sizeof(m_uris));
     memset(&m_ports, 0, sizeof(m_ports));
+    // Fill port_values with invalid values, so that a change will be detected initially
+    memset(&m_port_values, 255, sizeof(m_port_values));
 
     for (int i = 0; features[i]; ++i) {
         if (!strcmp(features[i]->URI, LV2_URID__map))
@@ -298,6 +319,27 @@ void MuntPlugin::connect_port(uint32_t port, void* data)
         break;
     case PortIndex::OUT_R:
         m_ports.out[1] = static_cast<float*>(data);
+        break;
+    case PortIndex::REVERB_ENABLE:
+        m_ports.reverb_enable = static_cast<float*>(data);
+        break;
+    case PortIndex::REVERB_OVERRIDE:
+        m_ports.reverb_override = static_cast<float*>(data);
+        break;
+    case PortIndex::REVERB_MODE:
+        m_ports.reverb_mode = static_cast<float*>(data);
+        break;
+    case PortIndex::REVERB_TIME:
+        m_ports.reverb_time = static_cast<float*>(data);
+        break;
+    case PortIndex::REVERB_LEVEL:
+        m_ports.reverb_level = static_cast<float*>(data);
+        break;
+    case PortIndex::OUTPUT_GAIN:
+        m_ports.output_gain = static_cast<float*>(data);
+        break;
+    case PortIndex::REVERB_OUTPUT_GAIN:
+        m_ports.reverb_output_gain = static_cast<float*>(data);
         break;
     }
 }
@@ -377,6 +419,58 @@ void MuntPlugin::activate()
 {
 }
 
+void MuntPlugin::handleParameterChanges()
+{
+    bool reverbSettingsChanged = false;
+    if (m_ports.reverb_enable && bool(*m_ports.reverb_enable) != m_port_values.reverb_enable)
+    {
+        m_port_values.reverb_enable = bool(*m_ports.reverb_enable);
+        m_synth->setReverbEnabled(m_port_values.reverb_enable);
+        reverbSettingsChanged = true;
+    }
+    if (m_ports.reverb_override && bool(*m_ports.reverb_override) != m_port_values.reverb_override)
+    {
+        m_port_values.reverb_override = bool(*m_ports.reverb_override);
+        m_synth->setReverbOverridden(m_port_values.reverb_override);
+        reverbSettingsChanged = true;
+    }
+    if (m_ports.reverb_mode && uint8_t(*m_ports.reverb_mode) != m_port_values.reverb_mode)
+    {
+        m_port_values.reverb_mode = uint8_t(*m_ports.reverb_mode);
+        reverbSettingsChanged = true;
+    }
+    if (m_ports.reverb_time && uint8_t(*m_ports.reverb_time) != m_port_values.reverb_time)
+    {
+        m_port_values.reverb_time = uint8_t(*m_ports.reverb_time);
+        reverbSettingsChanged = true;
+    }
+    if (m_ports.reverb_level && uint8_t(*m_ports.reverb_level) != m_port_values.reverb_level)
+    {
+        m_port_values.reverb_level = uint8_t(*m_ports.reverb_level);
+        reverbSettingsChanged = true;
+    }
+    if (m_port_values.reverb_override && m_port_values.reverb_enable && reverbSettingsChanged)
+    {
+        // Disable override for just as long as it takes to process one sysex event (from QSynth.cpp)
+        uint8_t sysex[] = {0x10, 0x00, 0x01, m_port_values.reverb_mode, m_port_values.reverb_time, m_port_values.reverb_level};
+        printf("mt32emu_lv2: reverb override %02x %02x %02x %02x %02x %02x\n", sysex[0], sysex[1], sysex[2], sysex[3], sysex[4], sysex[5]);
+        m_synth->setReverbOverridden(false);
+        m_synth->writeSysex(16, sysex, sizeof(sysex));
+        m_synth->setReverbOverridden(true);
+    }
+
+    if (m_ports.output_gain && *m_ports.output_gain != m_port_values.output_gain)
+    {
+        m_port_values.output_gain = *m_ports.output_gain;
+        m_synth->setOutputGain(m_port_values.output_gain);
+    }
+    if (m_ports.reverb_output_gain && *m_ports.reverb_output_gain != m_port_values.reverb_output_gain)
+    {
+        m_port_values.reverb_output_gain = *m_ports.reverb_output_gain;
+        m_synth->setReverbOutputGain(m_port_values.reverb_output_gain);
+    }
+}
+
 void MuntPlugin::run(uint32_t sample_count)
 {
     if (!m_ports.control || !m_ports.notify || !m_ports.out[0] || !m_ports.out[1] || !m_synth)
@@ -385,6 +479,8 @@ void MuntPlugin::run(uint32_t sample_count)
     // Set up forge to write to notify port
     lv2_atom_forge_set_buffer(&m_forge, (uint8_t*)m_ports.notify, m_ports.notify->atom.size);
     lv2_atom_forge_sequence_head(&m_forge, &m_notify_frame, 0);
+
+    handleParameterChanges();
 
     LV2_ATOM_SEQUENCE_FOREACH(m_ports.control, ev) {
         if (ev->body.type == m_uris.midi_MidiEvent && ev->body.size > 0) {
