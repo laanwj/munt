@@ -43,37 +43,51 @@
 #include "munt_ui_controller.h"
 #include "mt32emu_lv2_common.h"
 
+/** MT-32 constants for GUI */
+const unsigned int NUM_PARTS = 9;
+static const unsigned int NUM_BANKS = 4;
+static const char* BANK_NAMES[] = {"Synth-1", "Synth-2", "Memory ", "Rhythm "};
+
 /** Convert an LV2_Atom_String to a std::string */
 inline std::string atomToString(const LV2_Atom_String* message)
 {
     return std::string((const char*)LV2_ATOM_BODY(message), message->atom.size);
 }
 
-class LV2PluginUI
+class MuntPluginUI: public MuntUIController
 {
 public:
-    virtual ~LV2PluginUI() {}
-    virtual void port_event(uint32_t port_index, uint32_t buffer_size, uint32_t format, const void* buffer) = 0;
-    virtual int idle() = 0;
-};
-const unsigned int NUM_PARTS=9;
-
-class MuntPluginUI: public LV2PluginUI, public MuntUIController
-{
-public:
-    MuntPluginUI(const char* bundle_path, LV2UI_Write_Function write_function,
-               LV2UI_Controller controller, LV2UI_Widget* widget, const LV2_Feature* const* features);
+    static const char *URI;
+    static LV2UI_Handle instantiate(const struct _LV2UI_Descriptor* descriptor,
+        const char* plugin_uri, const char* bundle_path, LV2UI_Write_Function write_function,
+        LV2UI_Controller controller, LV2UI_Widget* widget, const LV2_Feature* const* features);
     ~MuntPluginUI();
 
+    /* Implementations of LV2 functions */
     void port_event(uint32_t port_index, uint32_t buffer_size, uint32_t format, const void* buffer);
     int idle();
 
+    /* Send MIDI message to DSP */
+    void sendMidi(void *data_in, size_t size_in);
+
+    /* Signals from NTK ui */
+    void test1();
+    void loadSyx(const char *filename);
+
     struct Features
     {
+        Features(const LV2_Feature* const* features);
+        /** Return true if all required features are present */
+        bool validate();
+
         LV2_URID_Map* map;
+        LV2UI_Widget parentWindow;
+        LV2UI_Resize* resize;
     };
     struct URIs
     {
+        URIs(LV2_URID_Map* map);
+
         LV2_URID midi_MidiEvent;
         LV2_URID atom_Object;
         LV2_URID atom_URID;
@@ -93,15 +107,10 @@ public:
         LV2_URID munt_arg_numPolys;
         LV2_URID munt_arg_numPolysNonReleasing;
     };
-
-    /* Send MIDI message to DSP */
-    void sendMidi(void *data_in, size_t size_in);
-
-    /* Signals from NTK ui */
-    void test1();
-    void loadSyx(const char *filename);
-
 private:
+    MuntPluginUI(const char* bundle_path, LV2UI_Write_Function write_function,
+               LV2UI_Controller controller, LV2UI_Widget* widget, const Features &features);
+
     Features m_features;
     URIs m_uris;
 
@@ -156,59 +165,83 @@ private:
     bool syxProcessEvents(size_t numBytes);
 };
 
-MuntPluginUI::MuntPluginUI(const char* bundle_path, LV2UI_Write_Function write_function,
-               LV2UI_Controller controller, LV2UI_Widget* widget, const LV2_Feature* const* features):
-    m_ui(0), m_displayStates(1<<DisplayState::PARTS)
+const char *MuntPluginUI::URI = MUNT_URI_UI;
+
+MuntPluginUI::URIs::URIs(LV2_URID_Map* map)
 {
-    LV2UI_Widget parentWindow = 0;
-    LV2UI_Resize *resize = 0;
-    memset(&m_features, 0, sizeof(m_features));
-    memset(&m_uris, 0, sizeof(m_uris));
+    memset(this, 0, sizeof(*this));
+
+    midi_MidiEvent = map->map(map->handle, LV2_MIDI__MidiEvent);
+    atom_Object = map->map(map->handle, LV2_ATOM__Object);
+    atom_String = map->map(map->handle, LV2_ATOM__String);
+    atom_Int = map->map(map->handle, LV2_ATOM__Int);
+    atom_URID = map->map(map->handle, LV2_ATOM__URID);
+    atom_eventTransfer = map->map(map->handle, LV2_ATOM__eventTransfer);
+    munt_eventType = map->map(map->handle, MUNT_URI__eventType);
+
+    munt_evt_showLCDMessage = map->map(map->handle, MUNT_URI__evt_showLCDMessage);
+    munt_evt_onPolyStateChanged = map->map(map->handle, MUNT_URI__evt_onPolyStateChanged);
+    munt_evt_onProgramChanged = map->map(map->handle, MUNT_URI__evt_onProgramChanged);
+    munt_arg_message = map->map(map->handle, MUNT_URI__arg_message);
+    munt_arg_partNum = map->map(map->handle, MUNT_URI__arg_partNum);
+    munt_arg_bankNum = map->map(map->handle, MUNT_URI__arg_bankNum);
+    munt_arg_patchName = map->map(map->handle, MUNT_URI__arg_patchName);
+    munt_arg_numPolys = map->map(map->handle, MUNT_URI__arg_numPolys);
+    munt_arg_numPolysNonReleasing = map->map(map->handle, MUNT_URI__arg_numPolysNonReleasing);
+}
+
+MuntPluginUI::Features::Features(const LV2_Feature* const* features)
+{
+    memset(this, 0, sizeof(*this));
 
     for (int i = 0; features[i]; ++i) {
         if (!strcmp(features[i]->URI, LV2_URID__map))
-            m_features.map = (LV2_URID_Map*)features[i]->data;
+            map = (LV2_URID_Map*)features[i]->data;
         if (!strcmp(features[i]->URI, LV2_UI__parent))
-            parentWindow = features[i]->data;
+            parentWindow = (LV2UI_Widget)features[i]->data;
         if (!strcmp(features[i]->URI, LV2_UI__resize))
             resize = (LV2UI_Resize*)features[i]->data;
     }
+}
 
-    if (m_features.map) {
-        LV2_URID_Map* map = m_features.map;
-        m_uris.midi_MidiEvent = map->map(map->handle, LV2_MIDI__MidiEvent);
-        m_uris.atom_Object = map->map(map->handle, LV2_ATOM__Object);
-        m_uris.atom_String = map->map(map->handle, LV2_ATOM__String);
-        m_uris.atom_Int = map->map(map->handle, LV2_ATOM__Int);
-        m_uris.atom_URID = map->map(map->handle, LV2_ATOM__URID);
-        m_uris.atom_eventTransfer = map->map(map->handle, LV2_ATOM__eventTransfer);
-        m_uris.munt_eventType = map->map(map->handle, MUNT_URI"#eventType");
+bool MuntPluginUI::Features::validate()
+{
+    return map != 0;
+}
 
-        m_uris.munt_evt_showLCDMessage = map->map(map->handle, MUNT_URI__evt_showLCDMessage);
-        m_uris.munt_evt_onPolyStateChanged = map->map(map->handle, MUNT_URI__evt_onPolyStateChanged);
-        m_uris.munt_evt_onProgramChanged = map->map(map->handle, MUNT_URI__evt_onProgramChanged);
-        m_uris.munt_arg_message = map->map(map->handle, MUNT_URI__arg_message);
-        m_uris.munt_arg_partNum = map->map(map->handle, MUNT_URI__arg_partNum);
-        m_uris.munt_arg_bankNum = map->map(map->handle, MUNT_URI__arg_bankNum);
-        m_uris.munt_arg_patchName = map->map(map->handle, MUNT_URI__arg_patchName);
-        m_uris.munt_arg_numPolys = map->map(map->handle, MUNT_URI__arg_numPolys);
-        m_uris.munt_arg_numPolysNonReleasing = map->map(map->handle, MUNT_URI__arg_numPolysNonReleasing);
+LV2UI_Handle MuntPluginUI::instantiate(const struct _LV2UI_Descriptor* descriptor,
+    const char* plugin_uri, const char* bundle_path, LV2UI_Write_Function write_function,
+    LV2UI_Controller controller, LV2UI_Widget* widget, const LV2_Feature* const* features)
+{
+    if (strcmp(descriptor->URI, MUNT_URI_UI) != 0 || strcmp(plugin_uri, MUNT_URI) != 0)
+        return nullptr;
+    Features l_features(features);
+    if (!l_features.validate())
+    {
+        fprintf(stderr, "mt32emu_lv2ui: required features are missing\n");
+        return nullptr;
     }
+    return static_cast<LV2_Handle>(new MuntPluginUI(bundle_path, write_function, controller, widget, l_features));
+}
 
+MuntPluginUI::MuntPluginUI(const char* bundle_path, LV2UI_Write_Function write_function,
+               LV2UI_Controller controller, LV2UI_Widget* widget, const Features &features):
+    m_features(features), m_uris(features.map), m_ui(0), m_displayStates(1<<DisplayState::PARTS)
+{
     m_bundlePath = bundle_path;
     m_writeFunction = write_function;
     m_controller = controller;
 
-    if (!parentWindow)
+    if (!m_features.parentWindow)
         printf("Warning: no parent window given\n");
 
-    m_ui = new FLMuntUI(this, (void*)parentWindow);
+    m_ui = new FLMuntUI(this, (void*)m_features.parentWindow);
     *widget = (LV2UI_Widget)fl_xid(m_ui->w);
 
-    if (resize)
-        resize->ui_resize(resize->handle, m_ui->w->w(), m_ui->w->h());
+    if (m_features.resize)
+        m_features.resize->ui_resize(m_features.resize->handle, m_ui->w->w(), m_ui->w->h());
     else
-        printf("Warning: Host doesn't support resize extension.");
+        printf("Warning: Host doesn't support resize extension, window may have malformed size.");
 
     /// forge for UI->DSP events
     lv2_atom_forge_init(&m_forge, m_features.map);
@@ -217,9 +250,6 @@ MuntPluginUI::MuntPluginUI(const char* bundle_path, LV2UI_Write_Function write_f
         m_polyState[i] = 0;
     initDisplay();
 }
-
-static const unsigned int NUM_BANKS = 4;
-static const char* BANK_NAMES[] = {"Synth-1", "Synth-2", "Memory ", "Rhythm "};
 
 void MuntPluginUI::port_event(uint32_t port_index, uint32_t buffer_size, uint32_t format, const void* buffer)
 {
@@ -450,63 +480,44 @@ MuntPluginUI::~MuntPluginUI()
     delete m_ui;
 }
 
-//////////////////////////////////////////
-// LV2UI plugin C++ wrapper
-
-static LV2UI_Handle instantiate(const struct _LV2UI_Descriptor* descriptor,
-                            const char*                     plugin_uri,
-                            const char*                     bundle_path,
-                            LV2UI_Write_Function            write_function,
-                            LV2UI_Controller                controller,
-                            LV2UI_Widget*                   widget,
-                            const LV2_Feature* const*       features)
+/** C++ LV2UI wrapper functions */
+template <class T> class LV2UIWrapper
 {
-    if (!strcmp(descriptor->URI, MUNT_URI_UI) && !strcmp(plugin_uri, MUNT_URI))
-        return static_cast<LV2_Handle>(
-            new MuntPluginUI(bundle_path, write_function, controller, widget, features));
-    return NULL;
-}
-
-static void
-cleanup(LV2UI_Handle ui)
-{
-    delete static_cast<LV2PluginUI*>(ui);
-}
-
-static void
-port_event(LV2UI_Handle ui,
-           uint32_t     port_index,
-           uint32_t     buffer_size,
-           uint32_t     format,
-           const void*  buffer)
-{
-    static_cast<LV2PluginUI*>(ui)->port_event(port_index, buffer_size, format, buffer);
-}
-
-static int
-idle(LV2UI_Handle ui)
-{
-    return static_cast<LV2PluginUI*>(ui)->idle();
-}
-
-static const LV2UI_Idle_Interface idle_interface = {
-    idle
-};
-
-static const void*
-external_extension_data(const char* uri)
-{
-    if (strcmp(uri, LV2_UI__idleInterface) == 0)
-        return (void *) &idle_interface;
-    return NULL;
-}
-
-static const LV2UI_Descriptor descriptor = {
-    MUNT_URI_UI,
-    instantiate,
-    cleanup,
-    port_event,
-    external_extension_data
+private:
+    static void cleanup(LV2UI_Handle ui)
+    {
+        delete static_cast<T*>(ui);
+    }
+    static void port_event(LV2UI_Handle ui, uint32_t port_index, uint32_t buffer_size,
+               uint32_t format, const void* buffer)
+    {
+        static_cast<T*>(ui)->port_event(port_index, buffer_size, format, buffer);
+    }
+    static int idle(LV2UI_Handle ui)
+    {
+        return static_cast<T*>(ui)->idle();
+    }
+    static const void* external_extension_data(const char* uri)
+    {
+        static const LV2UI_Idle_Interface idle_interface = {
+            idle
+        };
+        if (strcmp(uri, LV2_UI__idleInterface) == 0)
+            return (void *) &idle_interface;
+        return NULL;
+    }
+public:
+    static const LV2UI_Descriptor *get_descriptor()
+    {
+        static const LV2UI_Descriptor descriptor = {
+            T::URI,
+            T::instantiate,
+            cleanup,
+            port_event,
+            external_extension_data
+        };
+        return &descriptor;
+    }
 };
 
 LV2_SYMBOL_EXPORT
@@ -514,7 +525,7 @@ __attribute__ ((visibility ("default")))
 const LV2UI_Descriptor *lv2ui_descriptor ( uint32_t index )
 {
     switch (index) {
-    case 0: return &descriptor;
+    case 0: return LV2UIWrapper<MuntPluginUI>::get_descriptor();
     default: return NULL;
     }
 }

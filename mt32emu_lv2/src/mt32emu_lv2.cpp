@@ -57,8 +57,9 @@ class ReportHandler_LV2;
 class MuntPlugin
 {
 public:
-    MuntPlugin(const LV2_Descriptor* descriptor, double rate, const char* bundle_path,
-        const LV2_Feature* const* features);
+    static const char *URI;
+    static LV2_Handle instantiate(const LV2_Descriptor* descriptor,
+        double rate, const char* bundle_path, const LV2_Feature* const* features);
     ~MuntPlugin();
 
     void connect_port(uint32_t port, void* data);
@@ -73,11 +74,17 @@ public:
 
     struct Features
     {
+        Features(const LV2_Feature* const* features);
+        /** Return true if all required features are present */
+        bool validate();
+
         LV2_URID_Map* map;
         LV2_Log_Log* log;
     };
     struct URIs
     {
+        URIs(LV2_URID_Map* map);
+
         LV2_URID midi_MidiEvent;
         LV2_URID log_Error;
         LV2_URID log_Note;
@@ -100,6 +107,9 @@ public:
         LV2_URID munt_arg_numPolysNonReleasing;
     };
 private:
+    MuntPlugin(const LV2_Descriptor* descriptor, double rate, const char* bundle_path,
+        const Features &features);
+
     Features m_features;
     URIs m_uris;
     struct Ports
@@ -145,6 +155,8 @@ private:
     /** Detect changes to parameter ports and apply them */
     void handleParameterChanges();
 };
+
+const char *MuntPlugin::URI = MUNT_URI;
 
 /** Reporthandler that passes on events to UI through
  * notification port.
@@ -253,45 +265,72 @@ private:
     MT32Emu::Synth *m_synth;
 };
 
+MuntPlugin::URIs::URIs(LV2_URID_Map* map)
+{
+    memset(this, 0, sizeof(*this));
+
+    midi_MidiEvent = map->map(map->handle, LV2_MIDI__MidiEvent);
+    log_Error = map->map(map->handle, LV2_LOG__Error);
+    log_Note = map->map(map->handle, LV2_LOG__Note);
+    log_Trace = map->map(map->handle, LV2_LOG__Trace);
+    log_Warning = map->map(map->handle, LV2_LOG__Warning);
+    atom_eventTransfer = map->map(map->handle, LV2_ATOM__eventTransfer);
+    atom_Chunk = map->map(map->handle, LV2_ATOM__Chunk);
+
+    munt_eventType = map->map(map->handle, MUNT_URI__eventType);
+    munt_evt_showLCDMessage = map->map(map->handle, MUNT_URI__evt_showLCDMessage);
+    munt_evt_onPolyStateChanged = map->map(map->handle, MUNT_URI__evt_onPolyStateChanged);
+    munt_evt_onProgramChanged = map->map(map->handle, MUNT_URI__evt_onProgramChanged);
+    munt_arg_message = map->map(map->handle, MUNT_URI__arg_message);
+    munt_arg_partNum = map->map(map->handle, MUNT_URI__arg_partNum);
+    munt_arg_bankNum = map->map(map->handle, MUNT_URI__arg_bankNum);
+    munt_arg_patchName = map->map(map->handle, MUNT_URI__arg_patchName);
+    munt_arg_numPolys = map->map(map->handle, MUNT_URI__arg_numPolys);
+    munt_arg_numPolysNonReleasing = map->map(map->handle, MUNT_URI__arg_numPolysNonReleasing);
+}
+
+MuntPlugin::Features::Features(const LV2_Feature* const* features)
+{
+    memset(this, 0, sizeof(*this));
+
+    for (int i = 0; features[i]; ++i) {
+        if (!strcmp(features[i]->URI, LV2_URID__map))
+            map = (LV2_URID_Map*)features[i]->data;
+        if (!strcmp(features[i]->URI, LV2_LOG__log))
+            log = (LV2_Log_Log*)features[i]->data;
+    }
+}
+
+bool MuntPlugin::Features::validate()
+{
+    return map != 0;
+}
+
+LV2_Handle MuntPlugin::instantiate(const LV2_Descriptor* descriptor,
+    double rate, const char* bundle_path, const LV2_Feature* const* features)
+{
+    if (strcmp(descriptor->URI, MUNT_URI) != 0)
+        return nullptr;
+    Features l_features(features);
+    if (!l_features.validate())
+    {
+        fprintf(stderr, "mt32emu_lv2: required features are missing\n");
+        return nullptr;
+    }
+    return static_cast<LV2_Handle>(
+        new MuntPlugin(descriptor, rate, bundle_path, l_features));
+}
+
 MuntPlugin::MuntPlugin(const LV2_Descriptor* /*descriptor*/, double rate, const char* bundle_path,
-    const LV2_Feature* const* features):
+    const Features &features):
+    m_features(features), m_uris(features.map),
     m_rate(rate), m_reportHandler(0), m_synth(0), m_controlROMImage(0), m_pcmROMImage(0),
     m_timestamp(0), m_rateRatio(0), m_converter(0)
 {
-    memset(&m_features, 0, sizeof(m_features));
-    memset(&m_uris, 0, sizeof(m_uris));
     memset(&m_ports, 0, sizeof(m_ports));
     // Fill port_values with invalid values, so that a change will be detected initially
     memset(&m_port_values, 255, sizeof(m_port_values));
 
-    for (int i = 0; features[i]; ++i) {
-        if (!strcmp(features[i]->URI, LV2_URID__map))
-            m_features.map = (LV2_URID_Map*)features[i]->data;
-        if (!strcmp(features[i]->URI, LV2_LOG__log))
-            m_features.log = (LV2_Log_Log*)features[i]->data;
-    }
-
-    if (m_features.map) {
-        LV2_URID_Map* map = m_features.map;
-        m_uris.midi_MidiEvent = map->map(map->handle, LV2_MIDI__MidiEvent);
-        m_uris.log_Error = map->map(map->handle, LV2_LOG__Error);
-        m_uris.log_Note = map->map(map->handle, LV2_LOG__Note);
-        m_uris.log_Trace = map->map(map->handle, LV2_LOG__Trace);
-        m_uris.log_Warning = map->map(map->handle, LV2_LOG__Warning);
-        m_uris.atom_eventTransfer = map->map(map->handle, LV2_ATOM__eventTransfer);
-        m_uris.atom_Chunk = map->map(map->handle, LV2_ATOM__Chunk);
-
-        m_uris.munt_eventType = map->map(map->handle, MUNT_URI__eventType);
-        m_uris.munt_evt_showLCDMessage = map->map(map->handle, MUNT_URI__evt_showLCDMessage);
-        m_uris.munt_evt_onPolyStateChanged = map->map(map->handle, MUNT_URI__evt_onPolyStateChanged);
-        m_uris.munt_evt_onProgramChanged = map->map(map->handle, MUNT_URI__evt_onProgramChanged);
-        m_uris.munt_arg_message = map->map(map->handle, MUNT_URI__arg_message);
-        m_uris.munt_arg_partNum = map->map(map->handle, MUNT_URI__arg_partNum);
-        m_uris.munt_arg_bankNum = map->map(map->handle, MUNT_URI__arg_bankNum);
-        m_uris.munt_arg_patchName = map->map(map->handle, MUNT_URI__arg_patchName);
-        m_uris.munt_arg_numPolys = map->map(map->handle, MUNT_URI__arg_numPolys);
-        m_uris.munt_arg_numPolysNonReleasing = map->map(map->handle, MUNT_URI__arg_numPolysNonReleasing);
-    }
     /// forge for DSP->UI events
     lv2_atom_forge_init(&m_forge, m_features.map);
 
@@ -583,95 +622,65 @@ LV2_State_Status MuntPlugin::restore(LV2_State_Retrieve_Function retrieve, LV2_S
     return LV2_STATE_SUCCESS;
 }
 
-//////////////////////////////////////////
-// LV2 plugin C++ wrapper
-
-static LV2_Handle
-instantiate(const LV2_Descriptor*     descriptor,
-            double                    rate,
-            const char*               bundle_path,
-            const LV2_Feature* const* features)
+/** C++ LV2 wrapper functions */
+template <class T> class LV2Wrapper
 {
-    if (!strcmp(descriptor->URI, MUNT_URI))
-        return static_cast<LV2_Handle>(
-            new MuntPlugin(descriptor, rate, bundle_path, features));
-    return NULL;
-}
-
-static void
-connect_port(LV2_Handle instance,
-             uint32_t   port,
-             void*      data)
-{
-    static_cast<MuntPlugin*>(instance)->connect_port(port, data);
-}
-
-static void
-activate(LV2_Handle instance)
-{
-    static_cast<MuntPlugin*>(instance)->activate();
-}
-
-static void
-run(LV2_Handle instance, uint32_t sample_count)
-{
-    static_cast<MuntPlugin*>(instance)->run(sample_count);
-}
-
-static void
-deactivate(LV2_Handle instance)
-{
-    static_cast<MuntPlugin*>(instance)->deactivate();
-}
-
-static void
-cleanup(LV2_Handle instance)
-{
-    delete static_cast<MuntPlugin*>(instance);
-}
-
-static LV2_State_Status
-save(LV2_Handle                 instance,
-        LV2_State_Store_Function   store,
-        LV2_State_Handle           handle,
-        uint32_t                   flags,
-        const LV2_Feature *const * features)
-{
-    return static_cast<MuntPlugin*>(instance)->save(store, handle, flags, features);
-}
-
-LV2_State_Status
-restore(LV2_Handle                  instance,
-           LV2_State_Retrieve_Function retrieve,
-           LV2_State_Handle            handle,
-           uint32_t                    flags,
-           const LV2_Feature *const *  features)
-{
-    return static_cast<MuntPlugin*>(instance)->restore(retrieve, handle, flags, features);
-}
-
-static const LV2_State_Interface state_iface = {
-    save,
-    restore
-};
-
-static const void*
-extension_data(const char* uri)
-{
-    if (!strcmp(uri, LV2_STATE__interface))
-        return &state_iface;
-    return NULL;
-}
-
-static const LV2_Descriptor descriptor = {
-    MUNT_URI,
-    instantiate,
-    connect_port,
-    activate,
-    run,
-    deactivate,
-    cleanup,
-    extension_data
+private:
+    static void connect_port(LV2_Handle instance, uint32_t port, void* data)
+    {
+        static_cast<T*>(instance)->connect_port(port, data);
+    }
+    static void activate(LV2_Handle instance)
+    {
+        static_cast<T*>(instance)->activate();
+    }
+    static void run(LV2_Handle instance, uint32_t sample_count)
+    {
+        static_cast<T*>(instance)->run(sample_count);
+    }
+    static void deactivate(LV2_Handle instance)
+    {
+        static_cast<T*>(instance)->deactivate();
+    }
+    static void cleanup(LV2_Handle instance)
+    {
+        delete static_cast<T*>(instance);
+    }
+    static LV2_State_Status save(LV2_Handle instance, LV2_State_Store_Function store,
+        LV2_State_Handle handle, uint32_t flags, const LV2_Feature *const * features)
+    {
+        return static_cast<T*>(instance)->save(store, handle, flags, features);
+    }
+    static LV2_State_Status restore(LV2_Handle instance, LV2_State_Retrieve_Function retrieve,
+        LV2_State_Handle handle, uint32_t flags, const LV2_Feature *const * features)
+    {
+        return static_cast<T*>(instance)->restore(retrieve, handle, flags, features);
+    }
+    static const void* extension_data(const char* uri)
+    {
+        static const LV2_State_Interface state_iface = {
+            save,
+            restore
+        };
+        if (!strcmp(uri, LV2_STATE__interface))
+            return &state_iface;
+        return NULL;
+    }
+public:
+    static const LV2_Descriptor *get_descriptor()
+    {
+        static const LV2_Descriptor descriptor = {
+            T::URI,
+            T::instantiate,
+            connect_port,
+            activate,
+            run,
+            deactivate,
+            cleanup,
+            extension_data
+        };
+        return &descriptor;
+    }
 };
 
 LV2_SYMBOL_EXPORT
@@ -680,7 +689,7 @@ const LV2_Descriptor*
 lv2_descriptor(uint32_t index)
 {
     switch (index) {
-    case 0: return &descriptor;
+    case 0: return LV2Wrapper<MuntPlugin>::get_descriptor();
     default: return NULL;
     }
 }
