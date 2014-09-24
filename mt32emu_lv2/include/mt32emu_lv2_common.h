@@ -22,7 +22,10 @@
 #define MUNT_URI__evt_showLCDMessage       MUNT_URI "#evt_showLCDMessage"
 #define MUNT_URI__evt_onPolyStateChanged   MUNT_URI "#evt_onPolyStateChanged"
 #define MUNT_URI__evt_onProgramChanged     MUNT_URI "#evt_onProgramChanged"
-/** UI event arguments */
+#define MUNT_URI__evt_onDeviceReset        MUNT_URI "#evt_onDeviceReset"
+/** DSP event types */
+#define MUNT_URI__cmd_resetSynth           MUNT_URI "#cmd_resetSynth"
+/** Event arguments */
 #define MUNT_URI__arg_message              MUNT_URI "#arg_message"
 #define MUNT_URI__arg_partNum              MUNT_URI "#arg_partNum"
 #define MUNT_URI__arg_bankNum              MUNT_URI "#arg_bankNum"

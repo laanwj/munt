@@ -71,7 +71,7 @@ public:
     void sendMidi(void *data_in, size_t size_in);
 
     /* Signals from NTK ui */
-    void test1();
+    void resetSynth();
     void loadSyx(const char *filename);
 
     struct Features
@@ -99,6 +99,8 @@ public:
         LV2_URID munt_evt_showLCDMessage;
         LV2_URID munt_evt_onPolyStateChanged;
         LV2_URID munt_evt_onProgramChanged;
+        LV2_URID munt_evt_onDeviceReset;
+        LV2_URID munt_cmd_resetSynth;
         // Event arguments
         LV2_URID munt_arg_message;
         LV2_URID munt_arg_partNum;
@@ -127,7 +129,8 @@ private:
      * lower states override higher ones.
      */
     enum DisplayState: uint8_t {
-        PROGRESS = 0,
+        RESET = 0,
+        PROGRESS,
         MESSAGE,
         PROGRAM_CHANGE,
         PARTS,
@@ -182,6 +185,8 @@ MuntPluginUI::URIs::URIs(LV2_URID_Map* map)
     munt_evt_showLCDMessage = map->map(map->handle, MUNT_URI__evt_showLCDMessage);
     munt_evt_onPolyStateChanged = map->map(map->handle, MUNT_URI__evt_onPolyStateChanged);
     munt_evt_onProgramChanged = map->map(map->handle, MUNT_URI__evt_onProgramChanged);
+    munt_evt_onDeviceReset = map->map(map->handle, MUNT_URI__evt_onDeviceReset);
+    munt_cmd_resetSynth = map->map(map->handle, MUNT_URI__cmd_resetSynth);
     munt_arg_message = map->map(map->handle, MUNT_URI__arg_message);
     munt_arg_partNum = map->map(map->handle, MUNT_URI__arg_partNum);
     munt_arg_bankNum = map->map(map->handle, MUNT_URI__arg_bankNum);
@@ -319,6 +324,8 @@ void MuntPluginUI::port_event(uint32_t port_index, uint32_t buffer_size, uint32_
             std::stringstream s;
             s << partNum->body + 1 << "|" << BANK_NAMES[bankNum->body] << "|" << atomToString(patchName);
             displayMessage(DisplayState::PROGRAM_CHANGE, s.str(), 1.0);
+        } else if (eventType->body == m_uris.munt_evt_onDeviceReset) {
+            displayMessage(DisplayState::RESET, "", 0.25);
         } else {
             fprintf(stderr, "mt32emu_lv2ui: unknown UI notification eventType=%i\n", eventType->body);
         }
@@ -328,14 +335,14 @@ void MuntPluginUI::port_event(uint32_t port_index, uint32_t buffer_size, uint32_
 }
 
 // MT32Emu::Synth::calcSysexChecksum(const Bit8u *data, Bit32u len, Bit8u checksum)
-void MuntPluginUI::test1()
+void MuntPluginUI::resetSynth()
 {
-    printf("test1...\n");
     uint8_t obj_buf[1024];
     lv2_atom_forge_set_buffer(&m_forge, obj_buf, 1024);
     LV2_Atom_Forge_Frame set_frame;
     LV2_Atom* set = (LV2_Atom*)lv2_atom_forge_object(&m_forge, &set_frame, 0, m_uris.atom_eventTransfer);
-
+    lv2_atom_forge_key(&m_forge, m_uris.munt_eventType);
+    lv2_atom_forge_urid(&m_forge, m_uris.munt_cmd_resetSynth);
     lv2_atom_forge_pop(&m_forge, &set_frame);
     m_writeFunction(m_controller, PortIndex::CONTROL, lv2_atom_total_size(set), m_uris.atom_eventTransfer, set);
 }
@@ -454,6 +461,9 @@ void MuntPluginUI::updateDisplay()
     case DisplayState::MESSAGE:
     case DisplayState::PROGRAM_CHANGE:
         memcpy((char*)display, displayMessage.data(), std::min(LCDDisplay::NUMCHARS, displayMessage.size()));
+        break;
+    case DisplayState::RESET:
+        memset((char*)display, 128, LCDDisplay::NUMCHARS);
         break;
     }
     m_ui->display->setData(0, LCDDisplay::NUMCHARS, display);

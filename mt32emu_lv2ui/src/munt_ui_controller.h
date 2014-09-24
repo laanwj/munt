@@ -8,7 +8,7 @@ class MuntUIController
 public:
     virtual ~MuntUIController() {}
 
-    virtual void test1() = 0;
+    virtual void resetSynth() = 0;
     virtual void loadSyx(const char *filename) = 0;
 };
 

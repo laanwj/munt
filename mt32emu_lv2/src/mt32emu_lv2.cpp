@@ -92,12 +92,16 @@ public:
         LV2_URID log_Warning;
         LV2_URID atom_eventTransfer;
         LV2_URID atom_Chunk;
+        LV2_URID atom_Object;
+        LV2_URID atom_URID;
         // Event type property
         LV2_URID munt_eventType;
         // Event types
         LV2_URID munt_evt_showLCDMessage;
         LV2_URID munt_evt_onPolyStateChanged;
         LV2_URID munt_evt_onProgramChanged;
+        LV2_URID munt_evt_onDeviceReset;
+        LV2_URID munt_cmd_resetSynth;
         // Event arguments
         LV2_URID munt_arg_message;
         LV2_URID munt_arg_partNum;
@@ -197,9 +201,6 @@ protected:
     }
     void showLCDMessage(const char *message)
     {
-        //m_features.log->printf(m_features.log->handle, m_uris.log_Note, "LCD message: %s\n", message);
-        fprintf(stderr, "LCD message: %s\n", message);
-        fflush(stderr);
         LV2_Atom_Forge_Frame frame;
         lv2_atom_forge_frame_time(&m_forge, 0);
         lv2_atom_forge_object(&m_forge, &frame, 0, m_uris.atom_eventTransfer);
@@ -210,7 +211,15 @@ protected:
         lv2_atom_forge_pop(&m_forge, &frame);
     }
     void onMIDIMessagePlayed() {}
-    void onDeviceReset() {}
+    void onDeviceReset()
+    {
+        LV2_Atom_Forge_Frame frame;
+        lv2_atom_forge_frame_time(&m_forge, 0);
+        lv2_atom_forge_object(&m_forge, &frame, 0, m_uris.atom_eventTransfer);
+        lv2_atom_forge_key(&m_forge, m_uris.munt_eventType);
+        lv2_atom_forge_urid(&m_forge, m_uris.munt_evt_onDeviceReset);
+        lv2_atom_forge_pop(&m_forge, &frame);
+    }
     void onDeviceReconfig() {}
     void onNewReverbMode(MT32Emu::Bit8u /*mode*/) {}
     void onNewReverbTime(MT32Emu::Bit8u /*time*/) {}
@@ -276,11 +285,15 @@ MuntPlugin::URIs::URIs(LV2_URID_Map* map)
     log_Warning = map->map(map->handle, LV2_LOG__Warning);
     atom_eventTransfer = map->map(map->handle, LV2_ATOM__eventTransfer);
     atom_Chunk = map->map(map->handle, LV2_ATOM__Chunk);
+    atom_Object = map->map(map->handle, LV2_ATOM__Object);
+    atom_URID = map->map(map->handle, LV2_ATOM__URID);
 
     munt_eventType = map->map(map->handle, MUNT_URI__eventType);
     munt_evt_showLCDMessage = map->map(map->handle, MUNT_URI__evt_showLCDMessage);
     munt_evt_onPolyStateChanged = map->map(map->handle, MUNT_URI__evt_onPolyStateChanged);
     munt_evt_onProgramChanged = map->map(map->handle, MUNT_URI__evt_onProgramChanged);
+    munt_evt_onDeviceReset = map->map(map->handle, MUNT_URI__evt_onDeviceReset);
+    munt_cmd_resetSynth = map->map(map->handle, MUNT_URI__cmd_resetSynth);
     munt_arg_message = map->map(map->handle, MUNT_URI__arg_message);
     munt_arg_partNum = map->map(map->handle, MUNT_URI__arg_partNum);
     munt_arg_bankNum = map->map(map->handle, MUNT_URI__arg_bankNum);
@@ -535,6 +548,21 @@ void MuntPlugin::run(uint32_t sample_count)
                 m_synth->playSysex(evdata, ev->body.size, timeScaled);
                 //printf("sysex t=%08x st=%08x size=%08x\n", (unsigned)timeTarget, (unsigned)timeScaled, ev->body.size);
                 fflush(stdout);
+            }
+        } else if (ev->body.type == m_uris.atom_Object) {
+            LV2_Atom_Object* obj = (LV2_Atom_Object*)&ev->body;
+            const LV2_Atom_URID* eventType = NULL;
+            lv2_atom_object_get(obj, m_uris.munt_eventType, &eventType, 0);
+            if (eventType == NULL || eventType->atom.type != m_uris.atom_URID) {
+                fprintf(stderr, "mt32emu: eventType missing or has invalid type\n");
+                fflush(stderr);
+                continue;
+            }
+            if (eventType->body == m_uris.munt_cmd_resetSynth) {
+                printf("mt32emu_lv2: Resetting synth\n");
+                fflush(stdout);
+                uint8_t sysex[] = {0x7F, 0x00, 0x00, 0x00};
+                m_synth->writeSysex(16, sysex, sizeof(sysex));
             }
         } else {
             printf("mt32emu_lv2: Unknown event type %i\n", ev->body.type);

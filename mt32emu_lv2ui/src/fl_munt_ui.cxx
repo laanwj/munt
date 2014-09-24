@@ -2,11 +2,11 @@
 
 #include "fl_munt_ui.h"
 
-void FLMuntUI::cb_Debug_i(Fl_Button*, void*) {
-  c->test1();
+void FLMuntUI::cb_Reset_i(Fl_Button*, void*) {
+  c->resetSynth();
 }
-void FLMuntUI::cb_Debug(Fl_Button* o, void* v) {
-  ((FLMuntUI*)(o->parent()->user_data()))->cb_Debug_i(o,v);
+void FLMuntUI::cb_Reset(Fl_Button* o, void* v) {
+  ((FLMuntUI*)(o->parent()->user_data()))->cb_Reset_i(o,v);
 }
 
 void FLMuntUI::cb_Load_i(Fl_Button*, void*) {
@@ -19,8 +19,9 @@ void FLMuntUI::cb_Load(Fl_Button* o, void* v) {
 Fl_Double_Window* FLMuntUI::make_window() {
   { w = new Fl_Double_Window(430, 85);
     w->user_data((void*)(this));
-    { Fl_Button* o = new Fl_Button(335, 15, 80, 25, "Debug");
-      o->callback((Fl_Callback*)cb_Debug);
+    { Fl_Button* o = new Fl_Button(335, 15, 80, 25, "Reset");
+      o->tooltip("Reset the synthesizer. This resets the state to factory settings.");
+      o->callback((Fl_Callback*)cb_Reset);
     } // Fl_Button* o
     { display = new LCDDisplay(45, 46, 244, 24, "Display");
       display->box(FL_NO_BOX);
@@ -36,6 +37,7 @@ Fl_Double_Window* FLMuntUI::make_window() {
     { new Fl_Box(100, 14, 140, 21, "MT32EMU");
     } // Fl_Box* o
     { Fl_Button* o = new Fl_Button(335, 45, 80, 25, "Load syx");
+      o->tooltip("Load a MT-32 SysEx (.syx) file");
       o->callback((Fl_Callback*)cb_Load);
     } // Fl_Button* o
     w->end();

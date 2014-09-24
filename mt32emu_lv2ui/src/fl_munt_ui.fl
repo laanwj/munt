@@ -6,16 +6,16 @@ class FLMuntUI {open
 } {
   Function {make_window()} {open
   } {
-    Fl_Window w {open
-      xywh {388 354 430 85} type Double
+    Fl_Window w {open selected
+      xywh {416 512 430 85} type Double
       code0 {\#include <FL/x.H>}
       code1 {\#include "munt_ui_controller.h"}
       code2 {\#include <FL/Fl_File_Chooser.H>} visible
     } {
       Fl_Button {} {
-        label Debug
-        callback {c->test1();}
-        xywh {335 15 80 25}
+        label Reset
+        callback {c->resetSynth();}
+        tooltip {Reset the synthesizer. This resets the state to factory settings.} xywh {335 15 80 25}
       }
       Fl_Box display {
         label Display
@@ -30,7 +30,7 @@ class FLMuntUI {open
       Fl_Button {} {
         label {Load syx}
         callback {fc->show();}
-        xywh {335 45 80 25}
+        tooltip {Load a MT-32 SysEx (.syx) file} xywh {335 45 80 25}
       }
     }
     code {fc = new Fl_File_Chooser(0, "MT32 SysEx files (*.syx)", Fl_File_Chooser::SINGLE, "Select .syx file to load");
@@ -63,8 +63,7 @@ c = controller;} {}
     code {if (fc->shown())
     return;
 const char *filename = fc->value();
-static_cast<FLMuntUI*>(self)->c->loadSyx(filename);} {selected
-    }
+static_cast<FLMuntUI*>(self)->c->loadSyx(filename);} {}
   }
   Function {load_syx(const char *filename)} {open return_type void
   } {

@@ -16,8 +16,8 @@ public:
   Fl_Double_Window* make_window();
   Fl_Double_Window *w;
 private:
-  void cb_Debug_i(Fl_Button*, void*);
-  static void cb_Debug(Fl_Button*, void*);
+  void cb_Reset_i(Fl_Button*, void*);
+  static void cb_Reset(Fl_Button*, void*);
 public:
   LCDDisplay *display;
 private:
