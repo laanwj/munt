@@ -1,3 +1,19 @@
+/* Copyright (C) 2014 Wladimir J. van der Laan
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Lesser General Public License as published by
+ *  the Free Software Foundation, either version 2.1 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "fl_lcd_display.h"
 
 #include "font_6x8.h"
@@ -17,7 +33,10 @@ LCDDisplay::~LCDDisplay()
 
 inline void fade(uint8_t &d, uint8_t nv)
 {
-    d = (d + nv) >> 1;
+    if (d < nv)
+        d = nv;
+    else
+        d = (d + nv) >> 1;
 }
 
 void LCDDisplay::refreshDisplay()
@@ -70,7 +89,6 @@ void LCDDisplay::draw()
         int _x = x(), _y = y(), _w = w(), _h = h();
 
         cairo_rectangle(cr, _x, _y, _w, _h);
-        //cairo_set_source_rgb(cr, 98/255.0, 127/255.0, 0/255.0);
         cairo_set_source_rgb(cr, 12/255.0, 66/255.0, 4/255.0);
         cairo_fill(cr);
         cairo_set_source_rgb(cr, 232/255.0, 254/255.0, 0/255.0);
@@ -95,9 +113,11 @@ void LCDDisplay::setData(size_t addr, size_t size, const uint8_t *data)
     for (size_t ptr=0; ptr<size; ++ptr)
         if ((addr+ptr) < NUMCHARS)
             display[addr+ptr] = data[ptr];
-    refreshDisplay();
     if (!settle_counter)
+    {
+        refreshDisplay();
         Fl::add_timeout(0.05, refresh_timeout, this);
+    }
     settle_counter = 5;
 }
 
