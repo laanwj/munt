@@ -16,8 +16,6 @@
 
 #include "LinearResampler.h"
 
-#include <qglobal.h>
-
 using namespace MT32Emu;
 
 LinearResampler::LinearResampler(Synth *synth, double targetSampleRate) :
@@ -48,7 +46,7 @@ void LinearResampler::getOutputSamples(Sample *buffer, unsigned int length) {
 	while (length > 0) {
 		if (inLength == 0) {
 			inLength = Bit32u(length * inputToOutputRatio + 0.5);
-			inLength = qBound((Bit32u)1, inLength, (Bit32u)MAX_SAMPLES_PER_RUN);
+			inLength = std::min(std::max((Bit32u)1, inLength), (Bit32u)MAX_SAMPLES_PER_RUN);
 			synth->render(inBuffer, inLength);
 			inBufferPtr = inBuffer;
 		}
