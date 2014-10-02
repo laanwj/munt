@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <vector>
 #include <limits>
+#include <set>
 
 #include "lv2/lv2plug.in/ns/ext/atom/atom.h"
 #include "lv2/lv2plug.in/ns/ext/atom/forge.h"
@@ -68,7 +69,7 @@ public:
     int idle();
 
     /* Send MIDI message to DSP */
-    void sendMidi(void *data_in, size_t size_in);
+    size_t sendMidi(void *data_in, size_t size_in);
 
     /* Signals from NTK ui */
     void resetSynth();
@@ -100,6 +101,7 @@ public:
         LV2_URID munt_evt_onPolyStateChanged;
         LV2_URID munt_evt_onProgramChanged;
         LV2_URID munt_evt_onDeviceReset;
+        LV2_URID munt_evt_onSysExReceived;
         LV2_URID munt_cmd_resetSynth;
         // Event arguments
         LV2_URID munt_arg_message;
@@ -108,6 +110,8 @@ public:
         LV2_URID munt_arg_patchName;
         LV2_URID munt_arg_numPolys;
         LV2_URID munt_arg_numPolysNonReleasing;
+        LV2_URID munt_arg_addr;
+        LV2_URID munt_arg_len;
     };
 private:
     MuntPluginUI(const char* bundle_path, LV2UI_Write_Function write_function,
@@ -162,10 +166,17 @@ private:
     std::vector<uint8_t> m_syxData;
     size_t m_syxOffset;
     size_t m_syxStart;
+    /** Keep track of which events have been sent to the DSP, this is necessary
+     * because some hosts may drop events and want to warn of this.
+     */
+    std::set<std::pair<uint32_t,uint32_t> > m_syxSent; // [addr,len]
     /** Send queued syx events to DSP.
      * Return true when finished, false if more events have to be processed.
      */
     bool syxProcessEvents(size_t numBytes);
+    /** Check whether all syx events have been received.
+     */
+    static void checkSyxFinished(void *self);
 };
 
 const char *MuntPluginUI::URI = MUNT_URI_UI;
@@ -186,6 +197,7 @@ MuntPluginUI::URIs::URIs(LV2_URID_Map* map)
     munt_evt_onPolyStateChanged = map->map(map->handle, MUNT_URI__evt_onPolyStateChanged);
     munt_evt_onProgramChanged = map->map(map->handle, MUNT_URI__evt_onProgramChanged);
     munt_evt_onDeviceReset = map->map(map->handle, MUNT_URI__evt_onDeviceReset);
+    munt_evt_onSysExReceived = map->map(map->handle, MUNT_URI__evt_onSysExReceived);
     munt_cmd_resetSynth = map->map(map->handle, MUNT_URI__cmd_resetSynth);
     munt_arg_message = map->map(map->handle, MUNT_URI__arg_message);
     munt_arg_partNum = map->map(map->handle, MUNT_URI__arg_partNum);
@@ -193,6 +205,8 @@ MuntPluginUI::URIs::URIs(LV2_URID_Map* map)
     munt_arg_patchName = map->map(map->handle, MUNT_URI__arg_patchName);
     munt_arg_numPolys = map->map(map->handle, MUNT_URI__arg_numPolys);
     munt_arg_numPolysNonReleasing = map->map(map->handle, MUNT_URI__arg_numPolysNonReleasing);
+    munt_arg_addr = map->map(map->handle, MUNT_URI__arg_addr);
+    munt_arg_len = map->map(map->handle, MUNT_URI__arg_len);
 }
 
 MuntPluginUI::Features::Features(const LV2_Feature* const* features)
@@ -326,6 +340,20 @@ void MuntPluginUI::port_event(uint32_t port_index, uint32_t buffer_size, uint32_
             displayMessage(DisplayState::PROGRAM_CHANGE, s.str(), 1.0);
         } else if (eventType->body == m_uris.munt_evt_onDeviceReset) {
             displayMessage(DisplayState::RESET, "", 0.25);
+        } else if (eventType->body == m_uris.munt_evt_onSysExReceived) {
+            const LV2_Atom_Int* addr = NULL;
+            const LV2_Atom_Int* len = NULL;
+            lv2_atom_object_get(obj, m_uris.munt_arg_addr, &addr,
+                                     m_uris.munt_arg_len, &len,
+                                     0);
+            if (!addr || !len ||
+                 addr->atom.type != m_uris.atom_Int || len->atom.type != m_uris.atom_Int) {
+                fprintf(stderr, "mt32emu_lv2ui: invalid onSysExReceived message\n");
+                fflush(stderr);
+                return;
+            }
+            // Mark <addr,len> as done
+            m_syxSent.erase(std::make_pair(addr->body, len->body));
         } else {
             fprintf(stderr, "mt32emu_lv2ui: unknown UI notification eventType=%i\n", eventType->body);
         }
@@ -347,11 +375,11 @@ void MuntPluginUI::resetSynth()
     m_writeFunction(m_controller, PortIndex::CONTROL, lv2_atom_total_size(set), m_uris.atom_eventTransfer, set);
 }
 
-void MuntPluginUI::sendMidi(void *data_in, size_t size_in)
+size_t MuntPluginUI::sendMidi(void *data_in, size_t size_in)
 {
     if (sizeof(LV2_Atom) + size_in >= 1024) {
         fprintf(stdout, "mt32emu_lv2ui: Sending MIDI event too large (%i)\n", (int)size_in);
-        return;
+        return 0;
     }
     uint8_t obj_buf[1024];
     LV2_Atom* hdr = (LV2_Atom*)obj_buf;
@@ -361,6 +389,7 @@ void MuntPluginUI::sendMidi(void *data_in, size_t size_in)
     memcpy(data, data_in, size_in);
     size_t padded_size = lv2_atom_pad_size(lv2_atom_total_size(hdr));
     m_writeFunction(m_controller, PortIndex::CONTROL, padded_size, m_uris.atom_eventTransfer, hdr);
+    return padded_size;
 }
 
 const size_t SYX_BUFFER_SIZE = 64*1024;
@@ -380,6 +409,7 @@ void MuntPluginUI::loadSyx(const char *filename)
     m_syxData = std::vector<uint8_t>(buffer, buffer+nread);
     m_syxOffset = 0;
     m_syxStart = std::numeric_limits<size_t>::max();
+    m_syxSent.clear();
 
     m_displayProgress = 0.0;
     displayMessage(DisplayState::PROGRESS, std::string("Loading ") + fl_filename_name(filename) + "...", 0.0);
@@ -388,16 +418,19 @@ void MuntPluginUI::loadSyx(const char *filename)
 bool MuntPluginUI::syxProcessEvents(size_t numBytes)
 {
     // Read and process SysEx events
-    size_t end = std::min(m_syxOffset + numBytes, m_syxData.size());
+    size_t numSent = 0;
     // printf("Processevents... %u %u\n", (unsigned)m_syxOffset, (unsigned)end);
-    while (m_syxOffset < end) {
+    while (m_syxOffset < m_syxData.size() && numSent < numBytes) {
         if (m_syxData[m_syxOffset] == 0xf0)
             m_syxStart = m_syxOffset;
         if (m_syxData[m_syxOffset] == 0xf7 && m_syxStart != std::numeric_limits<size_t>::max()) {
             m_displayProgress = (double)m_syxOffset / m_syxData.size();
             updateDisplay();
-            // printf("  Event m_syxStart=%u size=%u\n", (unsigned)m_syxStart, (unsigned)(m_syxOffset-m_syxStart+1));
-            sendMidi(&m_syxData[m_syxStart], m_syxOffset-m_syxStart+1);
+            numSent += sendMidi(&m_syxData[m_syxStart], m_syxOffset-m_syxStart+1);
+            // Mark (addr,len) of event as sent
+            uint32_t addr, len;
+            if (getSysExInfo(&m_syxData[m_syxStart], m_syxOffset-m_syxStart+1, &addr, &len))
+                m_syxSent.insert(std::make_pair(addr, len));
         }
         ++m_syxOffset;
     }
@@ -405,9 +438,21 @@ bool MuntPluginUI::syxProcessEvents(size_t numBytes)
         m_displayStates &= ~(1 << DisplayState::PROGRESS);
         updateDisplay();
         m_syxData.clear();
+        // wait a bit, then if m_syxSent is not empty, signal transfer error
+        Fl::add_timeout(0.25, checkSyxFinished, this);
         return true;
     } else {
         return false;
+    }
+}
+
+void MuntPluginUI::checkSyxFinished(void *self_)
+{
+    MuntPluginUI *self = static_cast<MuntPluginUI*>(self_);
+    if (!self->m_syxSent.empty())
+    {
+        fl_alert("There was a problem transferring the syx data: %u events were lost",
+                (unsigned int)self->m_syxSent.size());
     }
 }
 

@@ -39,6 +39,7 @@
 #define MUNT_URI__evt_onPolyStateChanged   MUNT_URI "#evt_onPolyStateChanged"
 #define MUNT_URI__evt_onProgramChanged     MUNT_URI "#evt_onProgramChanged"
 #define MUNT_URI__evt_onDeviceReset        MUNT_URI "#evt_onDeviceReset"
+#define MUNT_URI__evt_onSysExReceived      MUNT_URI "#evt_onSysExReceived"
 /** DSP event types */
 #define MUNT_URI__cmd_resetSynth           MUNT_URI "#cmd_resetSynth"
 /** Event arguments */
@@ -48,6 +49,8 @@
 #define MUNT_URI__arg_patchName            MUNT_URI "#arg_patchName"
 #define MUNT_URI__arg_numPolys             MUNT_URI "#arg_numPolys"
 #define MUNT_URI__arg_numPolysNonReleasing MUNT_URI "#arg_numPolysNonReleasing"
+#define MUNT_URI__arg_addr                 MUNT_URI "#arg_addr"
+#define MUNT_URI__arg_len                  MUNT_URI "#arg_len"
 
 /** Port indices */
 enum PortIndex: uint32_t
@@ -64,5 +67,19 @@ enum PortIndex: uint32_t
     OUTPUT_GAIN = 9,
     REVERB_OUTPUT_GAIN = 10
 };
+
+bool getSysExInfo(const uint8_t *evdata, uint32_t size, uint32_t *addr_out, uint32_t *len_out)
+{
+    if (size > 10)
+    {
+        // TODO check that this is really a Roland SysEx
+        if (addr_out)
+            *addr_out = (evdata[5] << 24)|(evdata[6]<<16)|evdata[7];
+        if (len_out)
+            *len_out = size - 10; // F1 <hdr:7> <data:N> <checksum:1> F7
+        return true;
+    }
+    return false;
+}
 
 #endif

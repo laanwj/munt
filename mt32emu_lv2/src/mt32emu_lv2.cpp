@@ -101,6 +101,7 @@ public:
         LV2_URID munt_evt_onPolyStateChanged;
         LV2_URID munt_evt_onProgramChanged;
         LV2_URID munt_evt_onDeviceReset;
+        LV2_URID munt_evt_onSysExReceived;
         LV2_URID munt_cmd_resetSynth;
         // Event arguments
         LV2_URID munt_arg_message;
@@ -109,6 +110,8 @@ public:
         LV2_URID munt_arg_patchName;
         LV2_URID munt_arg_numPolys;
         LV2_URID munt_arg_numPolysNonReleasing;
+        LV2_URID munt_arg_addr;
+        LV2_URID munt_arg_len;
     };
 private:
     MuntPlugin(const LV2_Descriptor* descriptor, double rate, const char* bundle_path,
@@ -293,6 +296,7 @@ MuntPlugin::URIs::URIs(LV2_URID_Map* map)
     munt_evt_onPolyStateChanged = map->map(map->handle, MUNT_URI__evt_onPolyStateChanged);
     munt_evt_onProgramChanged = map->map(map->handle, MUNT_URI__evt_onProgramChanged);
     munt_evt_onDeviceReset = map->map(map->handle, MUNT_URI__evt_onDeviceReset);
+    munt_evt_onSysExReceived = map->map(map->handle, MUNT_URI__evt_onSysExReceived);
     munt_cmd_resetSynth = map->map(map->handle, MUNT_URI__cmd_resetSynth);
     munt_arg_message = map->map(map->handle, MUNT_URI__arg_message);
     munt_arg_partNum = map->map(map->handle, MUNT_URI__arg_partNum);
@@ -300,6 +304,8 @@ MuntPlugin::URIs::URIs(LV2_URID_Map* map)
     munt_arg_patchName = map->map(map->handle, MUNT_URI__arg_patchName);
     munt_arg_numPolys = map->map(map->handle, MUNT_URI__arg_numPolys);
     munt_arg_numPolysNonReleasing = map->map(map->handle, MUNT_URI__arg_numPolysNonReleasing);
+    munt_arg_addr = map->map(map->handle, MUNT_URI__arg_addr);
+    munt_arg_len = map->map(map->handle, MUNT_URI__arg_len);
 }
 
 MuntPlugin::Features::Features(const LV2_Feature* const* features)
@@ -538,7 +544,7 @@ void MuntPlugin::run(uint32_t sample_count)
         if (ev->body.type == m_uris.midi_MidiEvent && ev->body.size > 0) {
             const uint8_t *evdata = (uint8_t *)LV2_ATOM_BODY(&ev->body);
             uint64_t timeTarget = m_timestamp + ev->time.frames;
-            uint64_t timeScaled = timeTarget * m_rateRatio;
+            uint64_t timeScaled = timeTarget * m_rateRatio + 0.5;
             if (evdata[0] != LV2_MIDI_MSG_SYSTEM_EXCLUSIVE) {
                 MT32Emu::Bit32u msg = 0;
                 for (unsigned i=0; i<ev->body.size; ++i)
@@ -546,8 +552,21 @@ void MuntPlugin::run(uint32_t sample_count)
                 m_synth->playMsg(msg, timeScaled);
             } else {
                 m_synth->playSysex(evdata, ev->body.size, timeScaled);
-                //printf("sysex t=%08x st=%08x size=%08x\n", (unsigned)timeTarget, (unsigned)timeScaled, ev->body.size);
-                fflush(stdout);
+                uint32_t addr, len;
+                if (getSysExInfo(evdata, ev->body.size, &addr, &len))
+                {
+                    //printf("sysex addr=%06x size=%i\n", addr, len); fflush(stdout);
+                    LV2_Atom_Forge_Frame frame;
+                    lv2_atom_forge_frame_time(&m_forge, 0);
+                    lv2_atom_forge_object(&m_forge, &frame, 0, m_uris.atom_eventTransfer);
+                    lv2_atom_forge_key(&m_forge, m_uris.munt_eventType);
+                    lv2_atom_forge_urid(&m_forge, m_uris.munt_evt_onSysExReceived);
+                    lv2_atom_forge_key(&m_forge, m_uris.munt_arg_addr);
+                    lv2_atom_forge_int(&m_forge, addr);
+                    lv2_atom_forge_key(&m_forge, m_uris.munt_arg_len);
+                    lv2_atom_forge_int(&m_forge, len);
+                    lv2_atom_forge_pop(&m_forge, &frame);
+                }
             }
         } else if (ev->body.type == m_uris.atom_Object) {
             LV2_Atom_Object* obj = (LV2_Atom_Object*)&ev->body;
