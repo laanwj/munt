@@ -371,7 +371,7 @@ void MuntPluginUI::resetSynth()
     lv2_atom_forge_key(&m_forge, m_uris.munt_eventType);
     lv2_atom_forge_urid(&m_forge, m_uris.munt_cmd_resetSynth);
     lv2_atom_forge_pop(&m_forge, &set_frame);
-    m_writeFunction(m_controller, PortIndex::CONTROL, lv2_atom_total_size(set), m_uris.atom_eventTransfer, set);
+    m_writeFunction(m_controller, PortIndex::CONTROL, m_forge.offset, m_uris.atom_eventTransfer, set);
 }
 
 size_t MuntPluginUI::sendMidi(void *data_in, size_t size_in)
@@ -381,14 +381,11 @@ size_t MuntPluginUI::sendMidi(void *data_in, size_t size_in)
         return 0;
     }
     uint8_t obj_buf[1024];
-    LV2_Atom* hdr = (LV2_Atom*)obj_buf;
-    uint8_t* data = (uint8_t *)LV2_ATOM_BODY(hdr);
-    hdr->type = m_uris.midi_MidiEvent;
-    hdr->size = size_in;
-    memcpy(data, data_in, size_in);
-    size_t padded_size = lv2_atom_pad_size(lv2_atom_total_size(hdr));
-    m_writeFunction(m_controller, PortIndex::CONTROL, padded_size, m_uris.atom_eventTransfer, hdr);
-    return padded_size;
+    lv2_atom_forge_set_buffer(&m_forge, obj_buf, 1024);
+    LV2_Atom *atom = (LV2_Atom*)lv2_atom_forge_atom(&m_forge, size_in, m_uris.midi_MidiEvent);
+    lv2_atom_forge_write(&m_forge, data_in, size_in);
+    m_writeFunction(m_controller, PortIndex::CONTROL, m_forge.offset, m_uris.atom_eventTransfer, atom);
+    return m_forge.offset;
 }
 
 const size_t SYX_BUFFER_SIZE = 64*1024;
