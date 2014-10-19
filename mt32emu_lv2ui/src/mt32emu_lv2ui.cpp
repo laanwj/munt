@@ -35,7 +35,6 @@
 #include "lv2/lv2plug.in/ns/ext/log/log.h"
 #include "lv2/lv2plug.in/ns/lv2core/lv2.h"
 #include "lv2/lv2plug.in/ns/extensions/ui/ui.h"
-#include "lv2/lv2_external_ui.h"
 
 #include <mt32emu/mt32emu.h>
 
