@@ -60,7 +60,7 @@ Build in Release with debug info (default)/Release/Debug mode
 ```
 -DCMAKE_INSTALL_PREFIX:PATH=/opt/music
 
-To install to an alternative prefix
+To install to an alternative prefix (instead of `/usr/local`)
 ```
 
 Copying the ROMS
@@ -147,5 +147,8 @@ TODOs
   LA synth? Is it 'just' a matter of providing our own presets and samples?
 - Can the native sampling speed be changed to avoid having to resample from 32000Hz?
   Especially when using a custom PCM ROM
-- Figure out whether it makes sense to pass `MT32EMU_USE_FLOAT_SAMPLES` to render to floats directly
+- Figure out whether it makes sense to pass `MT32EMU_USE_FLOAT_SAMPLES` to render to floats directly:
+  probably not, increases CPU usage by a lot in my tests, even with -ffast-math
+- Speaking of that, CPU usage is quite high compared to other LV2 synths. Find if there are places
+  to be optimized without sacrificing emulation quality.
 
