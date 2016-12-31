@@ -19,7 +19,7 @@
 using namespace MT32Emu;
 
 size_t SoxrAdapter::getInputSamples(void *input_fn_state, soxr_in_t *data, size_t requested_len) {
-	uint length = qBound((uint)1, (uint)requested_len, MAX_SAMPLES_PER_RUN);
+	uint length = std::min(std::max((uint)1, (uint)requested_len), MAX_SAMPLES_PER_RUN);
 	SoxrAdapter *instance = (SoxrAdapter *)input_fn_state;
 	instance->synth->render(instance->inBuffer, length);
 	*data = instance->inBuffer;
@@ -40,13 +40,13 @@ SoxrAdapter::SoxrAdapter(Synth *synth, double targetSampleRate) :
 	soxr_error_t error;
 	resampler = soxr_create(SAMPLE_RATE, targetSampleRate, 2, &error, &ioSpec, &qSpec, &rtSpec);
 	if (error != NULL) {
-		qDebug() << "SampleRateConverter: Creation of SOXR instance failed:" << soxr_strerror(error);
+//		qDebug() << "SampleRateConverter: Creation of SOXR instance failed:" << soxr_strerror(error);
 		soxr_delete(resampler);
 		resampler = NULL;
 	}
 	error = soxr_set_input_fn(resampler, getInputSamples, this, MAX_SAMPLES_PER_RUN);
 	if (error != NULL) {
-		qDebug() << "SampleRateConverter: Installing sample feed for SOXR failed:" << soxr_strerror(error);
+//		qDebug() << "SampleRateConverter: Installing sample feed for SOXR failed:" << soxr_strerror(error);
 		soxr_delete(resampler);
 		resampler = NULL;
 	}
@@ -66,10 +66,10 @@ void SoxrAdapter::getOutputSamples(Sample *buffer, uint length) {
 		size_t gotFrames = soxr_output(resampler, buffer, (size_t)length);
 		soxr_error_t error = soxr_error(resampler);
 		if (error != NULL) {
-			qDebug() << "SampleRateConverter: SOXR error during processing:" << soxr_strerror(error) << "> resetting";
+//			qDebug() << "SampleRateConverter: SOXR error during processing:" << soxr_strerror(error) << "> resetting";
 			error = soxr_clear(resampler);
 			if (error != NULL) {
-				qDebug() << "SampleRateConverter: SOXR failed to reset:" << soxr_strerror(error);
+//				qDebug() << "SampleRateConverter: SOXR failed to reset:" << soxr_strerror(error);
 				soxr_delete(resampler);
 				resampler = NULL;
 				Synth::muteSampleBuffer(buffer, 2 * length);
@@ -78,7 +78,7 @@ void SoxrAdapter::getOutputSamples(Sample *buffer, uint length) {
 			continue;
 		}
 		if (gotFrames == 0) {
-			qDebug() << "SampleRateConverter: got 0 frames from SOXR, weird";
+//			qDebug() << "SampleRateConverter: got 0 frames from SOXR, weird";
 		}
 		buffer += gotFrames << 1;
 		length -= gotFrames;
