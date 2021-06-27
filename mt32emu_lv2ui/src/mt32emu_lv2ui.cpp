@@ -58,7 +58,7 @@ class MuntPluginUI: public MuntUIController
 {
 public:
     static const char *URI;
-    static LV2UI_Handle instantiate(const struct _LV2UI_Descriptor* descriptor,
+    static LV2UI_Handle instantiate(const LV2UI_Descriptor* descriptor,
         const char* plugin_uri, const char* bundle_path, LV2UI_Write_Function write_function,
         LV2UI_Controller controller, LV2UI_Widget* widget, const LV2_Feature* const* features);
     ~MuntPluginUI();
@@ -227,7 +227,7 @@ bool MuntPluginUI::Features::validate()
     return map != 0;
 }
 
-LV2UI_Handle MuntPluginUI::instantiate(const struct _LV2UI_Descriptor* descriptor,
+LV2UI_Handle MuntPluginUI::instantiate(const LV2UI_Descriptor* descriptor,
     const char* plugin_uri, const char* bundle_path, LV2UI_Write_Function write_function,
     LV2UI_Controller controller, LV2UI_Widget* widget, const LV2_Feature* const* features)
 {
